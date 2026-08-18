@@ -312,6 +312,20 @@
     </div>
 
     <div class="side-mods">
+      <div class="hex-mod" id="mod-compleanni" style="cursor:pointer;">
+        <div class="corner-tick ct-tr"></div><div class="corner-tick ct-bl"></div>
+        <div class="hex-ring"><svg viewBox="0 0 88 88">
+          <circle class="hex-ring-outer" cx="44" cy="44" r="41"/>
+          <g class="hex-ticks" id="mod-compleanni-ticks"></g>
+          <circle class="hex-ring-bg" cx="44" cy="44" r="35"/>
+          <circle class="hex-ring-fg" cx="44" cy="44" r="35" stroke-dasharray="100 120" transform="rotate(-90 44 44)"/>
+          <circle class="hex-ring-accent" cx="44" cy="44" r="28" stroke-dasharray="16 160" transform="rotate(-90 44 44)"/>
+        </svg><div class="hex-val" id="compleanni-count">0</div></div>
+        <div class="hex-lbl">Compleanni 30gg</div>
+      </div>
+    </div>
+
+    <div class="side-mods">
       <div class="hex-mod" id="mod-weather" style="cursor:pointer;">
         <div class="corner-tick ct-tr"></div><div class="corner-tick ct-bl"></div>
         <div class="hex-ring"><svg viewBox="0 0 88 88">
@@ -494,6 +508,15 @@
     <span class="modal-close" data-close="modal-tempo">✕</span>
     <div class="title">◈ diagnostica di sistema</div>
     <div id="modal-tempo-body" style="font-size:0.95rem;line-height:2;color:#c9f2ff;"></div>
+  </div>
+</div>
+
+<!-- ===== MODAL: PROSSIMI COMPLEANNI ===== -->
+<div id="modal-compleanni" class="modal-overlay hidden">
+  <div class="modal">
+    <span class="modal-close" data-close="modal-compleanni">✕</span>
+    <div class="title">🎂 Compleanni nei prossimi 30 giorni</div>
+    <div id="modal-compleanni-body" style="font-size:0.95rem;line-height:2;color:#c9f2ff;"></div>
   </div>
 </div>
 

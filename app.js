@@ -236,6 +236,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   renderCoreAnim("core-login");
   renderHexTicks("mod-time-ticks");
   renderHexTicks("mod-weather-ticks");
+  renderHexTicks("mod-compleanni-ticks");
   bindStaticEvents();
   startClock();
   const { data: { session } } = await sb.auth.getSession();
@@ -272,6 +273,7 @@ function bindStaticEvents(){
   document.getElementById("mod-weather").addEventListener("click", openWeatherModal);
   document.getElementById("mod-time").addEventListener("click", openTempoModal);
   document.querySelector("[data-close-birthday]").addEventListener("click", closeBirthdayPopup);
+  document.getElementById("mod-compleanni").addEventListener("click", openUpcomingBirthdaysModal);
 
   document.getElementById("btn-salva-contratto").addEventListener("click", saveRecord);
   document.getElementById("btn-elimina-contratto").addEventListener("click", deleteRecord);
@@ -588,6 +590,7 @@ async function onLogin(user){
     await loadRecords(section);
   }
   checkBirthdaysToday();
+  updateBirthdayWidget();
   switchView("home");
 }
 
@@ -613,6 +616,53 @@ function checkBirthdaysToday(){
 
 function closeBirthdayPopup(){
   document.getElementById("birthday-popup").classList.remove("show");
+}
+
+// ---------- PROSSIMI COMPLEANNI (30 giorni) ----------
+function getUpcomingBirthdays(daysAhead){
+  const cfg = SECTIONS.contatti;
+  if(!cfg || !cfg.birthdayField) return [];
+  const now = new Date();
+  const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  const result = [];
+  cfg.records.forEach(r=>{
+    const val = r.dati[cfg.birthdayField];
+    if(!val) return;
+    const bday = new Date(val);
+    if(isNaN(bday)) return;
+
+    let next = new Date(now.getFullYear(), bday.getMonth(), bday.getDate());
+    if(next < todayMidnight) next = new Date(now.getFullYear()+1, bday.getMonth(), bday.getDate());
+    const daysUntil = Math.round((next - todayMidnight) / 86400000);
+    if(daysUntil <= daysAhead){
+      const name = [r.dati.nome, r.dati.cognome].filter(Boolean).join(" ") || "Contatto senza nome";
+      result.push({ name, date: next, daysUntil });
+    }
+  });
+  result.sort((a,b)=> a.daysUntil - b.daysUntil);
+  return result;
+}
+
+function updateBirthdayWidget(){
+  const upcoming = getUpcomingBirthdays(30);
+  const el = document.getElementById("compleanni-count");
+  if(el) el.textContent = upcoming.length;
+}
+
+function openUpcomingBirthdaysModal(){
+  const upcoming = getUpcomingBirthdays(30);
+  const body = document.getElementById("modal-compleanni-body");
+  if(upcoming.length === 0){
+    body.innerHTML = "Nessun compleanno nei prossimi 30 giorni.";
+  } else {
+    body.innerHTML = upcoming.map(u=>{
+      const dataStr = u.date.toLocaleDateString("it-IT", { day:"numeric", month:"long" });
+      const quando = u.daysUntil === 0 ? "oggi" : (u.daysUntil === 1 ? "domani" : `tra ${u.daysUntil} giorni`);
+      return `<div>🎂 <b style="color:#8fe8ff">${escapeHtml(u.name)}</b> — ${dataStr} (${quando})</div>`;
+    }).join("");
+  }
+  document.getElementById("modal-compleanni").classList.remove("hidden");
 }
 
 // ---------- NAV ----------
