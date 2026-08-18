@@ -3,7 +3,6 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let currentUser = null;
 let campi = [];       // definizione campi dinamici
 let contratti = [];   // record contratti
-let isSignup = false;
 
 const DEFAULT_CAMPI = [
   { chiave:"intestatario", etichetta:"Intestatario", tipo:"testo", ordine:0,  mostra_in_tabella:true  },
@@ -37,7 +36,6 @@ window.addEventListener("DOMContentLoaded", async () => {
 
 function bindStaticEvents(){
   document.getElementById("btn-login").addEventListener("click", handleLoginOrSignup);
-  document.getElementById("login-toggle").addEventListener("click", toggleSignup);
   document.getElementById("btn-logout").addEventListener("click", handleLogout);
   document.querySelectorAll(".nav-item").forEach(el=>{
     el.addEventListener("click", ()=> switchView(el.dataset.view));
@@ -53,12 +51,6 @@ function bindStaticEvents(){
   });
 }
 
-function toggleSignup(){
-  isSignup = !isSignup;
-  document.getElementById("btn-login").textContent = isSignup ? "Registrati" : "Autentica";
-  document.getElementById("login-toggle").textContent = isSignup ? "Hai gi\u00e0 un account? Accedi" : "Nuovo utente? Registrati";
-}
-
 async function handleLoginOrSignup(){
   const email = document.getElementById("login-email").value.trim();
   const password = document.getElementById("login-password").value;
@@ -66,20 +58,9 @@ async function handleLoginOrSignup(){
   errEl.textContent = "";
   if(!email || !password){ errEl.textContent = "Inserisci email e password."; return; }
 
-  if(isSignup){
-    const { data, error } = await sb.auth.signUp({ email, password });
-    if(error){ errEl.textContent = error.message; return; }
-    if(data.user && !data.session){
-      errEl.style.color = "#8fe8ff";
-      errEl.textContent = "Controlla la mail per confermare l'account.";
-      return;
-    }
-    if(data.session) await onLogin(data.user);
-  } else {
-    const { data, error } = await sb.auth.signInWithPassword({ email, password });
-    if(error){ errEl.textContent = "Credenziali non valide."; return; }
-    await onLogin(data.user);
-  }
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if(error){ errEl.textContent = "Credenziali non valide."; return; }
+  await onLogin(data.user);
 }
 
 async function handleLogout(){
