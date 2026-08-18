@@ -47,6 +47,33 @@ const DEFAULT_CAMPI_ABBONAMENTI = [
   { chiave:"rinnovo",     etichetta:"Rinnovo",        tipo:"data",        ordine:5, mostra_in_tabella:false },
 ];
 
+const DEFAULT_CAMPI_VEICOLI = [
+  { chiave:"targa",                     etichetta:"Targa",                    tipo:"testo", ordine:0, mostra_in_tabella:true },
+  { chiave:"marca",                     etichetta:"Marca",                    tipo:"testo", ordine:1, mostra_in_tabella:true },
+  { chiave:"modello",                   etichetta:"Modello",                  tipo:"testo", ordine:2, mostra_in_tabella:true },
+  { chiave:"scadenza_bollo",            etichetta:"Scadenza bollo",           tipo:"data",  ordine:3, mostra_in_tabella:true },
+  { chiave:"scadenza_assicurazione",    etichetta:"Scadenza assicurazione",   tipo:"data",  ordine:4, mostra_in_tabella:true },
+  { chiave:"scadenza_revisione",        etichetta:"Scadenza revisione",       tipo:"data",  ordine:5, mostra_in_tabella:false },
+  { chiave:"costo_assicurazione",       etichetta:"Costo assicurazione",      tipo:"euro",  ordine:6, mostra_in_tabella:false },
+  { chiave:"note",                      etichetta:"Note",                     tipo:"testo", ordine:7, mostra_in_tabella:false },
+];
+
+const DEFAULT_CAMPI_DOCUMENTI = [
+  { chiave:"nome_documento", etichetta:"Documento",         tipo:"testo", ordine:0, mostra_in_tabella:true },
+  { chiave:"numero",         etichetta:"Numero",            tipo:"testo", ordine:1, mostra_in_tabella:false },
+  { chiave:"scadenza",       etichetta:"Scadenza",          tipo:"data",  ordine:2, mostra_in_tabella:true },
+  { chiave:"dove_rinnovare", etichetta:"Dove rinnovarlo",   tipo:"testo", ordine:3, mostra_in_tabella:false },
+  { chiave:"note",           etichetta:"Note",              tipo:"testo", ordine:4, mostra_in_tabella:false },
+];
+
+const DEFAULT_CAMPI_ACCESSI = [
+  { chiave:"servizio", etichetta:"Servizio",  tipo:"testo",     ordine:0, mostra_in_tabella:true },
+  { chiave:"username", etichetta:"Username",  tipo:"testo",     ordine:1, mostra_in_tabella:true },
+  { chiave:"password", etichetta:"Password",  tipo:"password",  ordine:2, mostra_in_tabella:true },
+  { chiave:"url",       etichetta:"URL",       tipo:"testo",     ordine:3, mostra_in_tabella:false },
+  { chiave:"note",     etichetta:"Note",      tipo:"testo",     ordine:4, mostra_in_tabella:false },
+];
+
 // ---------- REGISTRO SEZIONI (tabella dinamica generica) ----------
 const SECTIONS = {
   contratti: {
@@ -58,6 +85,21 @@ const SECTIONS = {
     table: "abbonamenti", camposTable: "abbonamenti_campi",
     defaultCampi: DEFAULT_CAMPI_ABBONAMENTI, totalField: "costo",
     periodicityField: "periodicita",
+    campi: [], records: []
+  },
+  veicoli: {
+    table: "veicoli", camposTable: "veicoli_campi",
+    defaultCampi: DEFAULT_CAMPI_VEICOLI,
+    campi: [], records: []
+  },
+  documenti: {
+    table: "documenti", camposTable: "documenti_campi",
+    defaultCampi: DEFAULT_CAMPI_DOCUMENTI,
+    campi: [], records: []
+  },
+  accessi: {
+    table: "accessi", camposTable: "accessi_campi",
+    defaultCampi: DEFAULT_CAMPI_ACCESSI,
     campi: [], records: []
   }
 };
@@ -205,6 +247,12 @@ function bindStaticEvents(){
   document.getElementById("btn-gestisci-campi").addEventListener("click", ()=> openCampiModal("contratti"));
   document.getElementById("btn-nuovo-abbonamento").addEventListener("click", ()=> openRecordModal("abbonamenti", null));
   document.getElementById("btn-gestisci-campi-abbonamenti").addEventListener("click", ()=> openCampiModal("abbonamenti"));
+  document.getElementById("btn-nuovo-veicolo").addEventListener("click", ()=> openRecordModal("veicoli", null));
+  document.getElementById("btn-gestisci-campi-veicoli").addEventListener("click", ()=> openCampiModal("veicoli"));
+  document.getElementById("btn-nuovo-documento").addEventListener("click", ()=> openRecordModal("documenti", null));
+  document.getElementById("btn-gestisci-campi-documenti").addEventListener("click", ()=> openCampiModal("documenti"));
+  document.getElementById("btn-nuovo-accesso").addEventListener("click", ()=> openRecordModal("accessi", null));
+  document.getElementById("btn-gestisci-campi-accessi").addEventListener("click", ()=> openCampiModal("accessi"));
   document.getElementById("mod-weather").addEventListener("click", openWeatherModal);
   document.getElementById("mod-time").addEventListener("click", openTempoModal);
 
@@ -531,8 +579,9 @@ function switchView(view){
     el.classList.toggle("active", el.dataset.view === view);
   });
   document.getElementById("view-home").classList.toggle("hidden", view!=="home");
-  document.getElementById("view-contratti").classList.toggle("hidden", view!=="contratti");
-  document.getElementById("view-abbonamenti").classList.toggle("hidden", view!=="abbonamenti");
+  ["contratti","abbonamenti","veicoli","documenti","accessi"].forEach(v=>{
+    document.getElementById("view-"+v).classList.toggle("hidden", view!==v);
+  });
   if(SECTIONS[view]) renderTable(view);
 }
 
@@ -594,7 +643,13 @@ function renderTable(section){
   }
   emptyEl.classList.add("hidden");
   tbody.innerHTML = cfg.records.map(row=>{
-    const cells = visibili.map(c=>`<td>${formatValue(row.dati[c.chiave], c.tipo)}</td>`).join("");
+    const cells = visibili.map(c=>{
+      const raw = formatValue(row.dati[c.chiave], c.tipo);
+      if(c.tipo==="data" && row.dati[c.chiave]){
+        return `<td><span class="${dateStatusClass(row.dati[c.chiave])}">${raw}</span></td>`;
+      }
+      return `<td>${raw}</td>`;
+    }).join("");
     return `<tr data-id="${row.id}">${cells}</tr>`;
   }).join("");
   tbody.querySelectorAll("tr").forEach(tr=>{
@@ -610,7 +665,18 @@ function formatValue(val, tipo){
   if(val===undefined || val===null || val==="") return "\u2014";
   if(tipo==="euro") return "\u20ac " + Number(val).toFixed(2);
   if(tipo==="periodicita") return val==="annuale" ? "Annuale" : "Mensile";
+  if(tipo==="password") return "••••••••";
   return escapeHtml(String(val));
+}
+
+function dateStatusClass(dateStr){
+  if(!dateStr) return "";
+  const d = new Date(dateStr);
+  if(isNaN(d)) return "";
+  const diffDays = Math.floor((d - new Date()) / 86400000);
+  if(diffDays < 0) return "date-expired";
+  if(diffDays <= 30) return "date-soon";
+  return "";
 }
 
 function escapeHtml(str){
@@ -640,6 +706,11 @@ function openRecordModal(section, record){
           <option value="mensile"${val!=="annuale"?" selected":""}>Mensile</option>
           <option value="annuale"${val==="annuale"?" selected":""}>Annuale (diviso automaticamente nel totale mensile)</option>
         </select></div>`;
+    }
+    if(c.tipo === "password"){
+      return `<div class="field pw-field-wrap"><label>${escapeHtml(c.etichetta)}</label>
+        <input type="password" data-chiave="${c.chiave}" value="${escapeHtml(String(val))}" class="pw-input">
+        <span class="pw-toggle" onclick="const i=this.previousElementSibling; i.type = i.type==='password' ? 'text' : 'password'; this.textContent = i.type==='password' ? 'mostra' : 'nascondi';">mostra</span></div>`;
     }
     const inputType = c.tipo==="data" ? "date" : (c.tipo==="numero"||c.tipo==="euro" ? "number" : "text");
     const step = c.tipo==="euro" ? ' step="0.01"' : "";
@@ -704,6 +775,7 @@ function buildCampoRow(campo){
       <option value="euro"${campo.tipo==="euro"?" selected":""}>Euro</option>
       <option value="data"${campo.tipo==="data"?" selected":""}>Data</option>
       <option value="periodicita"${campo.tipo==="periodicita"?" selected":""}>Periodicità (mensile/annuale)</option>
+      <option value="password"${campo.tipo==="password"?" selected":""}>Password (mascherata)</option>
     </select>
     <label class="chk"><input type="checkbox" class="campo-mostra"${campo.mostra_in_tabella?" checked":""}> in tabella</label>
     <span class="campo-del">✕</span>
