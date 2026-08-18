@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>J.A.R.V.I.S.</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    background:radial-gradient(ellipse at center, #05141c 0%, #010508 75%);
+    color:#8fe8ff;font-family:'Share Tech Mono',monospace;
+    min-height:100vh;
+  }
+  .orb{font-family:'Orbitron',sans-serif;}
+  .hidden{display:none !important;}
+  a{color:inherit;text-decoration:none;}
+
+  /* ============ LOGIN ============ */
+  #screen-login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+  #login{max-width:420px;width:100%;text-align:center;}
+  .reactor{width:220px;height:220px;margin:0 auto 20px;position:relative;}
+  .ring{position:absolute;top:50%;left:50%;border-radius:50%;border:1px solid rgba(42,184,217,.5);transform:translate(-50%,-50%);}
+  .ring.r1{width:220px;height:220px;border-style:dashed;animation:spin 40s linear infinite;}
+  .ring.r2{width:180px;height:180px;border-top-color:#2ab8d9;border-right-color:#2ab8d9;border-bottom-color:transparent;border-left-color:transparent;animation:spin 10s linear infinite;}
+  .ring.r3{width:150px;height:150px;border-style:dotted;animation:spin 25s linear infinite reverse;}
+  .ring.r4{width:110px;height:110px;border-top-color:transparent;border-left-color:#8fe8ff;animation:spin 6s linear infinite;}
+  .core{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:70px;height:70px;border-radius:50%;
+    background:radial-gradient(circle, rgba(143,232,255,.9) 0%, rgba(42,184,217,.3) 60%, transparent 100%);
+    box-shadow:0 0 30px rgba(143,232,255,.6);}
+  @keyframes spin{from{transform:translate(-50%,-50%) rotate(0)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+  #login h1{font-family:'Orbitron',sans-serif;font-size:20px;letter-spacing:6px;color:#e8fbff;text-transform:uppercase;}
+  #login .sub{font-size:11px;letter-spacing:3px;color:#4a90a8;margin-top:6px;text-transform:uppercase;}
+  .field{margin-top:22px;text-align:left;}
+  .field label{display:block;font-size:10px;letter-spacing:2px;color:#4a90a8;margin-bottom:5px;text-transform:uppercase;}
+  .field input,.field select{width:100%;background:transparent;border:none;border-bottom:1px solid rgba(42,184,217,.4);
+    color:#e8fbff;padding:8px 4px;font-family:'Share Tech Mono',monospace;font-size:13px;outline:none;}
+  .field input:focus{border-bottom-color:#8fe8ff;}
+  .btn{margin-top:24px;width:100%;padding:11px;background:transparent;border:1px solid #2ab8d9;color:#8fe8ff;
+    font-family:'Orbitron',sans-serif;font-size:12px;letter-spacing:4px;text-transform:uppercase;cursor:pointer;}
+  .btn:hover{background:rgba(42,184,217,.12);box-shadow:0 0 16px rgba(42,184,217,.4);}
+  .btn.small{width:auto;padding:8px 16px;font-size:11px;letter-spacing:2px;margin-top:0;}
+  .btn.ghost{border-color:rgba(42,184,217,.3);color:#4a90a8;}
+  #login-error{margin-top:14px;font-size:11px;color:#ff6767;min-height:14px;}
+  #login-toggle{margin-top:16px;font-size:11px;color:#4a90a8;cursor:pointer;letter-spacing:1px;}
+  #login-toggle:hover{color:#8fe8ff;}
+
+  /* ============ APP SHELL ============ */
+  #app{max-width:1100px;margin:0 auto;padding:30px 20px;}
+  .topbar{display:flex;justify-content:space-between;align-items:center;padding-bottom:14px;margin-bottom:24px;border-bottom:1px solid rgba(42,184,217,.25);}
+  .topbar .orb{font-size:14px;letter-spacing:5px;color:#8fe8ff;}
+  .topbar .right{display:flex;align-items:center;gap:16px;font-size:11px;color:#4a90a8;}
+  .topbar .right span.email{color:#8fe8ff;}
+  .logout{cursor:pointer;letter-spacing:1px;}
+  .logout:hover{color:#ff6767;}
+
+  .layout{display:grid;grid-template-columns:190px 1fr;gap:24px;align-items:start;}
+  .nav-item{padding:10px 12px;font-size:12px;letter-spacing:2px;color:#4a90a8;text-transform:uppercase;position:relative;cursor:pointer;}
+  .nav-item.active{color:#8fe8ff;}
+  .nav-item.active::before{content:'';position:absolute;left:-12px;top:50%;transform:translateY(-50%);width:5px;height:5px;border-radius:50%;background:#8fe8ff;box-shadow:0 0 6px #8fe8ff;}
+
+  /* home */
+  #view-home{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:420px;}
+  #view-home .welcome{margin-top:20px;font-size:11px;letter-spacing:3px;color:#4a90a8;text-transform:uppercase;}
+
+  /* panels */
+  .panel{border:1px solid rgba(42,184,217,.25);padding:20px;position:relative;margin-bottom:20px;}
+  .panel::before,.panel::after{content:'';position:absolute;width:12px;height:12px;border:1px solid #2ab8d9;}
+  .panel::before{top:-1px;left:-1px;border-right:none;border-bottom:none;}
+  .panel::after{bottom:-1px;right:-1px;border-left:none;border-top:none;}
+  .panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+  .panel .title{font-size:11px;letter-spacing:3px;color:#2ab8d9;text-transform:uppercase;}
+  .panel-actions{display:flex;gap:10px;}
+
+  table{width:100%;border-collapse:collapse;font-size:12px;}
+  th{text-align:left;font-size:9px;letter-spacing:1px;color:#4a90a8;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid rgba(42,184,217,.2);}
+  td{padding:9px 6px;color:#c9f2ff;border-bottom:1px solid rgba(42,184,217,.08);cursor:pointer;}
+  tr:hover td{background:rgba(42,184,217,.05);}
+  #contratti-empty{padding:20px 0;font-size:12px;color:#4a90a8;text-align:center;}
+
+  /* modal */
+  .modal-overlay{position:fixed;inset:0;background:rgba(1,5,8,.85);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50;}
+  .modal{max-width:520px;width:100%;max-height:85vh;overflow-y:auto;background:#05141c;border:1px solid rgba(42,184,217,.4);padding:24px;position:relative;}
+  .modal .title{font-size:12px;letter-spacing:3px;color:#2ab8d9;text-transform:uppercase;margin-bottom:18px;}
+  .modal-close{position:absolute;top:16px;right:18px;cursor:pointer;color:#4a90a8;font-size:16px;}
+  .modal-close:hover{color:#ff6767;}
+  .modal-actions{display:flex;justify-content:space-between;margin-top:22px;gap:10px;}
+  .campo-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;padding:8px;border:1px solid rgba(42,184,217,.15);}
+  .campo-row input[type=text]{flex:1;background:transparent;border:none;border-bottom:1px solid rgba(42,184,217,.3);color:#e8fbff;padding:5px;font-family:'Share Tech Mono',monospace;font-size:12px;outline:none;}
+  .campo-row select{background:#05141c;border:1px solid rgba(42,184,217,.3);color:#e8fbff;font-size:11px;padding:5px;}
+  .campo-row label.chk{font-size:10px;color:#4a90a8;display:flex;align-items:center;gap:4px;white-space:nowrap;}
+  .campo-del{cursor:pointer;color:#ff6767;font-size:14px;padding:0 6px;}
+</style>
+</head>
+<body>
+
+<!-- ===== LOGIN ===== -->
+<div id="screen-login">
+  <div id="login">
+    <div class="reactor">
+      <div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div><div class="ring r4"></div>
+      <div class="core"></div>
+    </div>
+    <h1>J.A.R.V.I.S.</h1>
+    <div class="sub">Sistema personale</div>
+    <div class="field"><label>Identificativo</label><input type="email" id="login-email" autocomplete="username"></div>
+    <div class="field"><label>Chiave di accesso</label><input type="password" id="login-password" autocomplete="current-password"></div>
+    <button class="btn" id="btn-login">Autentica</button>
+    <div id="login-error"></div>
+    <div id="login-toggle">Nuovo utente? Registrati</div>
+  </div>
+</div>
+
+<!-- ===== APP ===== -->
+<div id="app" class="hidden">
+  <div class="topbar">
+    <div class="orb" id="topbar-title">J.A.R.V.I.S.</div>
+    <div class="right">
+      <span class="email" id="user-email"></span>
+      <span class="logout" id="btn-logout">Esci</span>
+    </div>
+  </div>
+  <div class="layout">
+    <div>
+      <div class="nav-item active" data-view="home">Home</div>
+      <div class="nav-item" data-view="contratti">Contratti telefonici</div>
+    </div>
+    <div>
+      <!-- HOME -->
+      <div id="view-home">
+        <div class="reactor" style="width:280px;height:280px;">
+          <div class="ring r1" style="width:280px;height:280px;"></div>
+          <div class="ring r2" style="width:230px;height:230px;"></div>
+          <div class="ring r3" style="width:190px;height:190px;"></div>
+          <div class="ring r4" style="width:140px;height:140px;"></div>
+          <div class="core" style="width:90px;height:90px;"></div>
+        </div>
+        <div class="welcome" id="welcome-text">bentornato</div>
+      </div>
+
+      <!-- CONTRATTI -->
+      <div id="view-contratti" class="hidden">
+        <div class="panel">
+          <div class="panel-head">
+            <div class="title">◈ contratti telefonici</div>
+            <div class="panel-actions">
+              <button class="btn small ghost" id="btn-gestisci-campi">Gestisci campi</button>
+              <button class="btn small" id="btn-nuovo-contratto">+ Nuovo contratto</button>
+            </div>
+          </div>
+          <div id="contratti-table-wrap">
+            <table id="contratti-table">
+              <thead><tr id="contratti-thead-row"></tr></thead>
+              <tbody id="contratti-tbody"></tbody>
+            </table>
+            <div id="contratti-empty" class="hidden">Nessun contratto salvato. Usa "+ Nuovo contratto" per iniziare.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: SCHEDA CONTRATTO ===== -->
+<div id="modal-contratto" class="modal-overlay hidden">
+  <div class="modal">
+    <span class="modal-close" data-close="modal-contratto">✕</span>
+    <div class="title" id="modal-contratto-title">Scheda contratto</div>
+    <div id="modal-contratto-fields"></div>
+    <div class="modal-actions">
+      <button class="btn small ghost hidden" id="btn-elimina-contratto">Elimina</button>
+      <button class="btn small" id="btn-salva-contratto">Salva</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: GESTISCI CAMPI ===== -->
+<div id="modal-campi" class="modal-overlay hidden">
+  <div class="modal">
+    <span class="modal-close" data-close="modal-campi">✕</span>
+    <div class="title">Gestisci campi tabella</div>
+    <div id="campi-list"></div>
+    <button class="btn small ghost" id="btn-aggiungi-campo" style="margin-top:10px;">+ Aggiungi campo</button>
+    <div class="modal-actions">
+      <span></span>
+      <button class="btn small" id="btn-salva-campi">Salva campi</button>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
