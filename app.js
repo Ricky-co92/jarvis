@@ -5,6 +5,14 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 let currentUser = null;
 let weatherData = null;
 let weatherCity = "";
+let weatherMap = null;
+let radarLayer = null;
+let radarFrames = [];
+let radarHost = "";
+let radarFrameIndex = 0;
+let radarInterval = null;
+let sessionStart = null;
+let tempoInterval = null;
 
 // ---------- CAMPI DI DEFAULT PER SEZIONE ----------
 const DEFAULT_CAMPI_CONTRATTI = [
@@ -198,6 +206,7 @@ function bindStaticEvents(){
   document.getElementById("btn-nuovo-abbonamento").addEventListener("click", ()=> openRecordModal("abbonamenti", null));
   document.getElementById("btn-gestisci-campi-abbonamenti").addEventListener("click", ()=> openCampiModal("abbonamenti"));
   document.getElementById("mod-weather").addEventListener("click", openWeatherModal);
+  document.getElementById("mod-time").addEventListener("click", openTempoModal);
 
   document.getElementById("btn-salva-contratto").addEventListener("click", saveRecord);
   document.getElementById("btn-elimina-contratto").addEventListener("click", deleteRecord);
@@ -307,6 +316,121 @@ function openWeatherModal(){
     `;
   }
   document.getElementById("modal-meteo").classList.remove("hidden");
+  initRadar();
+}
+
+// ---------- RADAR PRECIPITAZIONI (RainViewer, nessuna API key) ----------
+async function fetchRadarFrames(){
+  try{
+    const res = await fetch("https://api.rainviewer.com/public/weather-maps.json");
+    const data = await res.json();
+    radarHost = data.host;
+    radarFrames = [...(data.radar.past || []), ...(data.radar.nowcast || [])];
+  }catch(e){
+    console.warn("Radar non disponibile", e);
+    radarFrames = [];
+  }
+}
+
+function radarTileUrl(frame){
+  return `${radarHost}${frame.path}/256/{z}/{x}/{y}/2/1_1.png`;
+}
+
+function initRadar(){
+  if(!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(async (pos)=>{
+    const { latitude, longitude } = pos.coords;
+
+    if(!weatherMap){
+      weatherMap = L.map("radar-map", { zoomControl:false, attributionControl:false }).setView([latitude, longitude], 7);
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", { subdomains:"abcd", maxZoom:19 }).addTo(weatherMap);
+      L.marker([latitude, longitude]).addTo(weatherMap);
+    } else {
+      weatherMap.setView([latitude, longitude], 7);
+      setTimeout(()=> weatherMap.invalidateSize(), 100);
+    }
+
+    if(radarFrames.length === 0) await fetchRadarFrames();
+    if(radarFrames.length === 0) return;
+
+    if(radarLayer) weatherMap.removeLayer(radarLayer);
+    radarFrameIndex = radarFrames.length - 1; // frame più recente
+    radarLayer = L.tileLayer(radarTileUrl(radarFrames[radarFrameIndex]), { opacity:0.65 }).addTo(weatherMap);
+
+    clearInterval(radarInterval);
+    radarInterval = setInterval(()=>{
+      radarFrameIndex = (radarFrameIndex + 1) % radarFrames.length;
+      radarLayer.setUrl(radarTileUrl(radarFrames[radarFrameIndex]));
+    }, 600);
+  }, ()=>{ console.warn("Geolocalizzazione negata"); });
+}
+
+function stopRadar(){
+  clearInterval(radarInterval);
+  radarInterval = null;
+}
+
+// ---------- DIAGNOSTICA DI SESSIONE (click sull'ora) ----------
+function getDayOfYear(d){
+  const start = new Date(d.getFullYear(), 0, 0);
+  const diff = d - start;
+  return Math.floor(diff / 86400000);
+}
+
+function getISOWeek(d){
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  return Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+}
+
+const MOON_PHASES = ["Novilunio","Luna crescente","Primo quarto","Gibbosa crescente","Plenilunio","Gibbosa calante","Ultimo quarto","Luna calante"];
+function getMoonPhase(d){
+  // riferimento: novilunio noto 6 gennaio 2000, ciclo sinodico 29.53058867 giorni
+  const synodic = 29.53058867;
+  const ref = new Date(Date.UTC(2000,0,6,18,14));
+  const days = (d - ref) / 86400000;
+  const phase = ((days % synodic) + synodic) % synodic;
+  const index = Math.floor((phase / synodic) * 8 + 0.5) % 8;
+  return { name: MOON_PHASES[index], pct: Math.round((phase/synodic)*100) };
+}
+
+function formatDuration(ms){
+  const totalSec = Math.floor(ms/1000);
+  const h = Math.floor(totalSec/3600);
+  const m = Math.floor((totalSec%3600)/60);
+  const s = totalSec%60;
+  return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+}
+
+function renderTempoBody(){
+  const now = new Date();
+  const body = document.getElementById("modal-tempo-body");
+  const elapsed = sessionStart ? formatDuration(now - sessionStart) : "—";
+  const doy = getDayOfYear(now);
+  const totalDays = ((now.getFullYear()%4===0 && now.getFullYear()%100!==0) || now.getFullYear()%400===0) ? 366 : 365;
+  const week = getISOWeek(now);
+  const moon = getMoonPhase(now);
+  body.innerHTML = `
+    <div>Sessione attiva da: <b style="color:#8fe8ff">${elapsed}</b></div>
+    <div>Giorno dell'anno: ${doy} / ${totalDays}</div>
+    <div>Settimana ISO: n. ${week}</div>
+    <div>Fase lunare: <b style="color:#8fe8ff">${moon.name}</b> (${moon.pct}% del ciclo)</div>
+    <div>Timestamp locale: ${now.toLocaleString("it-IT")}</div>
+  `;
+}
+
+function openTempoModal(){
+  renderTempoBody();
+  document.getElementById("modal-tempo").classList.remove("hidden");
+  clearInterval(tempoInterval);
+  tempoInterval = setInterval(renderTempoBody, 1000);
+}
+
+function stopTempo(){
+  clearInterval(tempoInterval);
+  tempoInterval = null;
 }
 
 // ---------- LOGIN / LOGOUT ----------
@@ -387,6 +511,7 @@ async function handleLogout(){
 
 async function onLogin(user){
   currentUser = user;
+  sessionStart = new Date();
   const displayName = (user.user_metadata && (user.user_metadata.full_name || user.user_metadata.name))
     || user.email.split("@")[0];
   document.getElementById("user-name").textContent = displayName;
@@ -644,4 +769,6 @@ async function saveCampi(){
 // ---------- UTIL ----------
 function closeModal(id){
   document.getElementById(id).classList.add("hidden");
+  if(id === "modal-meteo") stopRadar();
+  if(id === "modal-tempo") stopTempo();
 }
