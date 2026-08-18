@@ -3,10 +3,9 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 });
 
 let currentUser = null;
-let campi = [];       // definizione campi dinamici
-let contratti = [];   // record contratti
 
-const DEFAULT_CAMPI = [
+// ---------- CAMPI DI DEFAULT PER SEZIONE ----------
+const DEFAULT_CAMPI_CONTRATTI = [
   { chiave:"intestatario", etichetta:"Intestatario", tipo:"testo", ordine:0,  mostra_in_tabella:true  },
   { chiave:"numero",       etichetta:"Numero",        tipo:"testo", ordine:1,  mostra_in_tabella:true  },
   { chiave:"iccid",        etichetta:"ICCID",         tipo:"testo", ordine:2,  mostra_in_tabella:false },
@@ -28,6 +27,28 @@ const DEFAULT_CAMPI = [
   { chiave:"istituto",     etichetta:"Istituto finanziario", tipo:"testo", ordine:18, mostra_in_tabella:false },
   { chiave:"scadenza_finanziamento", etichetta:"Scadenza finanziamento", tipo:"data", ordine:19, mostra_in_tabella:false },
 ];
+
+const DEFAULT_CAMPI_ABBONAMENTI = [
+  { chiave:"servizio", etichetta:"Servizio",       tipo:"testo", ordine:0, mostra_in_tabella:true },
+  { chiave:"costo",    etichetta:"Costo",          tipo:"euro",  ordine:1, mostra_in_tabella:true },
+  { chiave:"mdp",      etichetta:"Come lo pago",   tipo:"testo", ordine:2, mostra_in_tabella:true },
+  { chiave:"note",     etichetta:"Note",           tipo:"testo", ordine:3, mostra_in_tabella:false },
+  { chiave:"rinnovo",  etichetta:"Rinnovo",        tipo:"data",  ordine:4, mostra_in_tabella:false },
+];
+
+// ---------- REGISTRO SEZIONI (tabella dinamica generica) ----------
+const SECTIONS = {
+  contratti: {
+    table: "contratti", camposTable: "contratti_campi",
+    defaultCampi: DEFAULT_CAMPI_CONTRATTI, totalField: "totale",
+    campi: [], records: []
+  },
+  abbonamenti: {
+    table: "abbonamenti", camposTable: "abbonamenti_campi",
+    defaultCampi: DEFAULT_CAMPI_ABBONAMENTI, totalField: "costo",
+    campi: [], records: []
+  }
+};
 
 // ---------- CORE ANIMATION (SVG generato via JS, riusato in login + home) ----------
 const CORE_SVG = `
@@ -85,12 +106,12 @@ const CORE_SVG = `
 function renderCoreAnim(containerId){
   const el = document.getElementById(containerId);
   if(!el || el.dataset.rendered) return;
-  // rende univoci gli id SVG (coreGrad, bgGlow, glowSoft, glowStrong, grid) per evitare conflitti se il core compare più volte in pagina
   const suffix = "-" + containerId;
   const svgHtml = CORE_SVG.replace(/id="([a-zA-Z]+)"/g, `id="$1${suffix}"`)
                            .replace(/url\(#([a-zA-Z]+)\)/g, `url(#$1${suffix})`);
   el.innerHTML = svgHtml;
   el.dataset.rendered = "1";
+
   const ticks = el.querySelector(".core-ticks");
   for(let i=0;i<60;i++){
     const angle=(i/60)*360, long=i%5===0;
@@ -112,6 +133,16 @@ function renderCoreAnim(containerId){
     c.style.animationDelay = (i*0.4)+"s";
     dots.appendChild(c);
   });
+
+  const burst = document.createElement("div");
+  burst.className = "burst";
+  for(let i=0;i<16;i++){
+    const ray = document.createElement("div");
+    ray.className = "ray";
+    ray.style.setProperty("--a", (i*22.5)+"deg");
+    burst.appendChild(ray);
+  }
+  el.appendChild(burst);
 }
 
 // ---------- HEX MODULE TICKS ----------
@@ -157,10 +188,14 @@ function bindStaticEvents(){
   document.querySelectorAll(".nav-item").forEach(el=>{
     el.addEventListener("click", ()=> { switchView(el.dataset.view); closeMenu(); });
   });
-  document.getElementById("btn-nuovo-contratto").addEventListener("click", ()=> openContrattoModal(null));
-  document.getElementById("btn-gestisci-campi").addEventListener("click", openCampiModal);
-  document.getElementById("btn-salva-contratto").addEventListener("click", saveContratto);
-  document.getElementById("btn-elimina-contratto").addEventListener("click", deleteContratto);
+
+  document.getElementById("btn-nuovo-contratto").addEventListener("click", ()=> openRecordModal("contratti", null));
+  document.getElementById("btn-gestisci-campi").addEventListener("click", ()=> openCampiModal("contratti"));
+  document.getElementById("btn-nuovo-abbonamento").addEventListener("click", ()=> openRecordModal("abbonamenti", null));
+  document.getElementById("btn-gestisci-campi-abbonamenti").addEventListener("click", ()=> openCampiModal("abbonamenti"));
+
+  document.getElementById("btn-salva-contratto").addEventListener("click", saveRecord);
+  document.getElementById("btn-elimina-contratto").addEventListener("click", deleteRecord);
   document.getElementById("btn-aggiungi-campo").addEventListener("click", addCampoRow);
   document.getElementById("btn-salva-campi").addEventListener("click", saveCampi);
   document.querySelectorAll(".modal-close").forEach(el=>{
@@ -245,6 +280,7 @@ async function loadWeather(){
   }, ()=>{ console.warn("Geolocalizzazione negata"); });
 }
 
+// ---------- LOGIN / LOGOUT ----------
 async function handleLoginOrSignup(){
   const email = document.getElementById("login-email").value.trim();
   const password = document.getElementById("login-password").value;
@@ -258,49 +294,59 @@ async function handleLoginOrSignup(){
   await onLogin(data.user);
 }
 
-// ---------- TRANSIZIONE DI ACCESSO: il core si "monta", poi carica, poi flash + iris ----------
+// ---------- TRANSIZIONE DI ACCESSO ----------
 function wait(ms){ return new Promise(r => setTimeout(r, ms)); }
 
 async function playLoginTransition(){
   const core = document.getElementById("core-login");
   const loginBox = document.getElementById("login");
+  const label = document.getElementById("transition-label");
+  const ticks = core.querySelectorAll(".core-ticks line");
+  const accentArc = core.querySelector('circle[stroke="#ffb020"]');
 
   loginBox.classList.add("fading");
 
-  // fase 1: il core si smonta e rimonta (assemble)
   core.classList.add("assembling");
-  await wait(30); // forza il layout prima di rimuovere, per far partire la transizione
+  await wait(30);
   core.classList.remove("assembling");
-  await wait(650);
+  await wait(600);
 
-  // fase 2: carica (arco si riempie, glow intensifica)
   core.classList.add("charging");
-  const accentArc = core.querySelector('circle[stroke="#ffb020"]');
   if(accentArc){
     accentArc.classList.add("charge-arc");
     accentArc.style.strokeDasharray = "1233 0";
   }
-  await wait(600);
+  ticks.forEach((t,i)=> setTimeout(()=> t.classList.add("tick-lit"), i*7));
+  await wait(650);
 
-  // fase 3: flash
+  core.classList.add("bursting");
   const flash = document.getElementById("login-flash");
   flash.classList.add("flash");
-  await wait(180);
+  await wait(200);
 
-  // fase 4: copri con l'iris e scambia le schermate sotto il flash
+  label.classList.add("show");
   const iris = document.getElementById("login-iris");
   iris.style.clipPath = "circle(150% at 50% 50%)";
   document.getElementById("screen-login").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
 
-  await wait(80);
+  await wait(450);
   flash.classList.remove("flash");
 
-  // fase 5: apri l'iris rivelando la home
+  await wait(150);
   iris.style.clipPath = "";
   iris.classList.add("opening");
+  label.classList.remove("show");
   await wait(720);
   iris.classList.remove("opening");
+
+  core.classList.remove("charging","bursting");
+  ticks.forEach(t=>t.classList.remove("tick-lit"));
+  if(accentArc){
+    accentArc.style.strokeDasharray = "140 900";
+    accentArc.classList.remove("charge-arc");
+  }
+  loginBox.classList.remove("fading");
 }
 
 async function handleLogout(){
@@ -312,12 +358,16 @@ async function handleLogout(){
 
 async function onLogin(user){
   currentUser = user;
-  document.getElementById("user-email").textContent = user.email;
-  document.getElementById("welcome-text").textContent = "bentornato, " + user.email.split("@")[0];
+  const displayName = (user.user_metadata && (user.user_metadata.full_name || user.user_metadata.name))
+    || user.email.split("@")[0];
+  document.getElementById("user-name").textContent = displayName;
+  document.getElementById("welcome-text").textContent = "bentornato, " + displayName;
   renderCoreAnim("core-home");
   loadWeather();
-  await ensureCampi();
-  await loadContratti();
+  for(const section of Object.keys(SECTIONS)){
+    await ensureCampi(section);
+    await loadRecords(section);
+  }
   switchView("home");
 }
 
@@ -328,51 +378,67 @@ function switchView(view){
   });
   document.getElementById("view-home").classList.toggle("hidden", view!=="home");
   document.getElementById("view-contratti").classList.toggle("hidden", view!=="contratti");
-  if(view==="contratti") renderTable();
+  document.getElementById("view-abbonamenti").classList.toggle("hidden", view!=="abbonamenti");
+  if(SECTIONS[view]) renderTable(view);
 }
 
-// ---------- CAMPI ----------
-async function ensureCampi(){
-  const { data, error } = await sb.from("contratti_campi").select("*").order("ordine");
+// ---------- CAMPI (generico per sezione) ----------
+async function ensureCampi(section){
+  const cfg = SECTIONS[section];
+  const { data, error } = await sb.from(cfg.camposTable).select("*").order("ordine");
   if(error){ console.error(error); return; }
   if(data.length === 0){
-    const toInsert = DEFAULT_CAMPI.map(c => ({...c, user_id: currentUser.id}));
-    const { data: inserted, error: insErr } = await sb.from("contratti_campi").insert(toInsert).select();
+    const toInsert = cfg.defaultCampi.map(c => ({...c, user_id: currentUser.id}));
+    const { data: inserted, error: insErr } = await sb.from(cfg.camposTable).insert(toInsert).select();
     if(insErr){ console.error(insErr); return; }
-    campi = inserted.sort((a,b)=>a.ordine-b.ordine);
+    cfg.campi = inserted.sort((a,b)=>a.ordine-b.ordine);
   } else {
-    campi = data;
+    cfg.campi = data;
   }
 }
 
-async function loadContratti(){
-  const { data, error } = await sb.from("contratti").select("*").order("created_at", { ascending:false });
+async function loadRecords(section){
+  const cfg = SECTIONS[section];
+  const { data, error } = await sb.from(cfg.table).select("*").order("created_at", { ascending:false });
   if(error){ console.error(error); return; }
-  contratti = data;
+  cfg.records = data;
 }
 
-function renderTable(){
-  const visibili = campi.filter(c=>c.mostra_in_tabella).sort((a,b)=>a.ordine-b.ordine);
-  const thead = document.getElementById("contratti-thead-row");
+function updateTotal(section){
+  const cfg = SECTIONS[section];
+  const sum = cfg.records.reduce((acc, r) => {
+    const v = parseFloat(r.dati[cfg.totalField]);
+    return acc + (isNaN(v) ? 0 : v);
+  }, 0);
+  const el = document.getElementById(section + "-total-value");
+  if(el) el.textContent = "€ " + sum.toFixed(2);
+}
+
+function renderTable(section){
+  const cfg = SECTIONS[section];
+  const visibili = cfg.campi.filter(c=>c.mostra_in_tabella).sort((a,b)=>a.ordine-b.ordine);
+  const thead = document.getElementById(section + "-thead-row");
   thead.innerHTML = visibili.map(c=>`<th>${escapeHtml(c.etichetta)}</th>`).join("");
-  const tbody = document.getElementById("contratti-tbody");
-  const emptyEl = document.getElementById("contratti-empty");
-  if(contratti.length===0){
+  const tbody = document.getElementById(section + "-tbody");
+  const emptyEl = document.getElementById(section + "-empty");
+  if(cfg.records.length===0){
     tbody.innerHTML = "";
     emptyEl.classList.remove("hidden");
+    updateTotal(section);
     return;
   }
   emptyEl.classList.add("hidden");
-  tbody.innerHTML = contratti.map(row=>{
+  tbody.innerHTML = cfg.records.map(row=>{
     const cells = visibili.map(c=>`<td>${formatValue(row.dati[c.chiave], c.tipo)}</td>`).join("");
     return `<tr data-id="${row.id}">${cells}</tr>`;
   }).join("");
   tbody.querySelectorAll("tr").forEach(tr=>{
     tr.addEventListener("click", ()=>{
-      const rec = contratti.find(r=>r.id===tr.dataset.id);
-      openContrattoModal(rec);
+      const rec = cfg.records.find(r=>r.id===tr.dataset.id);
+      openRecordModal(section, rec);
     });
   });
+  updateTotal(section);
 }
 
 function formatValue(val, tipo){
@@ -387,15 +453,19 @@ function escapeHtml(str){
   return d.innerHTML;
 }
 
-// ---------- MODAL CONTRATTO ----------
+// ---------- MODAL RECORD (generico, riusato per contratti e abbonamenti) ----------
+let activeSection = null;
 let editingId = null;
 
-function openContrattoModal(record){
+function openRecordModal(section, record){
+  activeSection = section;
   editingId = record ? record.id : null;
-  document.getElementById("modal-contratto-title").textContent = record ? "Modifica contratto" : "Nuovo contratto";
+  const cfg = SECTIONS[section];
+  const nome = section === "contratti" ? "contratto" : "abbonamento";
+  document.getElementById("modal-contratto-title").textContent = record ? `Modifica ${nome}` : `Nuovo ${nome}`;
   document.getElementById("btn-elimina-contratto").classList.toggle("hidden", !record);
   const wrap = document.getElementById("modal-contratto-fields");
-  const ordinati = [...campi].sort((a,b)=>a.ordine-b.ordine);
+  const ordinati = [...cfg.campi].sort((a,b)=>a.ordine-b.ordine);
   wrap.innerHTML = ordinati.map(c=>{
     const val = record ? (record.dati[c.chiave] ?? "") : "";
     const inputType = c.tipo==="data" ? "date" : (c.tipo==="numero"||c.tipo==="euro" ? "number" : "text");
@@ -406,38 +476,44 @@ function openContrattoModal(record){
   document.getElementById("modal-contratto").classList.remove("hidden");
 }
 
-async function saveContratto(){
+async function saveRecord(){
+  const cfg = SECTIONS[activeSection];
   const inputs = document.querySelectorAll("#modal-contratto-fields input");
   const dati = {};
   inputs.forEach(inp=>{
     if(inp.value !== "") dati[inp.dataset.chiave] = inp.value;
   });
   if(editingId){
-    const { error } = await sb.from("contratti").update({ dati }).eq("id", editingId);
+    const { error } = await sb.from(cfg.table).update({ dati }).eq("id", editingId);
     if(error){ alert("Errore salvataggio: " + error.message); return; }
   } else {
-    const { error } = await sb.from("contratti").insert({ dati, user_id: currentUser.id });
+    const { error } = await sb.from(cfg.table).insert({ dati, user_id: currentUser.id });
     if(error){ alert("Errore salvataggio: " + error.message); return; }
   }
   closeModal("modal-contratto");
-  await loadContratti();
-  renderTable();
+  await loadRecords(activeSection);
+  renderTable(activeSection);
 }
 
-async function deleteContratto(){
+async function deleteRecord(){
   if(!editingId) return;
-  if(!confirm("Eliminare questo contratto?")) return;
-  const { error } = await sb.from("contratti").delete().eq("id", editingId);
+  const cfg = SECTIONS[activeSection];
+  if(!confirm("Eliminare questo elemento?")) return;
+  const { error } = await sb.from(cfg.table).delete().eq("id", editingId);
   if(error){ alert("Errore eliminazione: " + error.message); return; }
   closeModal("modal-contratto");
-  await loadContratti();
-  renderTable();
+  await loadRecords(activeSection);
+  renderTable(activeSection);
 }
 
-// ---------- MODAL CAMPI ----------
-function openCampiModal(){
+// ---------- MODAL CAMPI (generico, riusato per contratti e abbonamenti) ----------
+let activeCampiSection = null;
+
+function openCampiModal(section){
+  activeCampiSection = section;
+  const cfg = SECTIONS[section];
   const list = document.getElementById("campi-list");
-  const ordinati = [...campi].sort((a,b)=>a.ordine-b.ordine);
+  const ordinati = [...cfg.campi].sort((a,b)=>a.ordine-b.ordine);
   list.innerHTML = "";
   ordinati.forEach(c => list.appendChild(buildCampoRow(c)));
   document.getElementById("modal-campi").classList.remove("hidden");
@@ -474,12 +550,13 @@ function slugify(str){
 }
 
 async function saveCampi(){
+  const cfg = SECTIONS[activeCampiSection];
   const rows = document.querySelectorAll("#campi-list .campo-row");
   const nuoviCampi = [];
   rows.forEach((row, idx)=>{
     const etichetta = row.querySelector(".campo-etichetta").value.trim();
     if(!etichetta) return;
-    const existing = campi.find(c=>c.id===row.dataset.id);
+    const existing = cfg.campi.find(c=>c.id===row.dataset.id);
     nuoviCampi.push({
       id: row.dataset.id || undefined,
       chiave: existing ? existing.chiave : slugify(etichetta),
@@ -491,28 +568,28 @@ async function saveCampi(){
     });
   });
 
-  const idsAttuali = campi.map(c=>c.id);
+  const idsAttuali = cfg.campi.map(c=>c.id);
   const idsRimasti = nuoviCampi.filter(c=>c.id).map(c=>c.id);
   const idsRimossi = idsAttuali.filter(id=>!idsRimasti.includes(id));
   if(idsRimossi.length){
-    await sb.from("contratti_campi").delete().in("id", idsRimossi);
+    await sb.from(cfg.camposTable).delete().in("id", idsRimossi);
   }
 
   for(const c of nuoviCampi){
     if(c.id){
-      await sb.from("contratti_campi").update({
+      await sb.from(cfg.camposTable).update({
         etichetta:c.etichetta, tipo:c.tipo, ordine:c.ordine, mostra_in_tabella:c.mostra_in_tabella
       }).eq("id", c.id);
     } else {
       delete c.id;
-      await sb.from("contratti_campi").insert(c);
+      await sb.from(cfg.camposTable).insert(c);
     }
   }
 
-  const { data } = await sb.from("contratti_campi").select("*").order("ordine");
-  campi = data;
+  const { data } = await sb.from(cfg.camposTable).select("*").order("ordine");
+  cfg.campi = data;
   closeModal("modal-campi");
-  renderTable();
+  renderTable(activeCampiSection);
 }
 
 // ---------- UTIL ----------

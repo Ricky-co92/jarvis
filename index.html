@@ -47,7 +47,18 @@
   .core-anim.charging .spin-1,.core-anim.charging .spin-2,.core-anim.charging .spin-3{filter:brightness(1.5);}
   .core-anim.charging .pulse{animation:pulseFast .4s ease-in-out infinite;}
   @keyframes pulseFast{0%,100%{opacity:.85}50%{opacity:1}}
-  .charge-arc{transition:stroke-dasharray .6s cubic-bezier(.2,.7,.3,1);}
+  .charge-arc{transition:stroke-dasharray .65s cubic-bezier(.2,.7,.3,1);}
+  .core-anim.charging .spin-1{animation:spinCW 8s linear infinite;}
+  .core-anim.charging .spin-3{animation:spinCW 4s linear infinite;}
+  .tick-lit{stroke:#ffffff !important;opacity:1 !important;filter:drop-shadow(0 0 4px #fff);}
+  .core-anim .burst{position:absolute;top:50%;left:50%;width:2px;height:2px;pointer-events:none;}
+  .core-anim .burst .ray{position:absolute;top:0;left:0;width:3px;height:3px;border-radius:50%;background:#8fe8ff;box-shadow:0 0 8px #8fe8ff;opacity:0;}
+  .core-anim.bursting .burst .ray{animation:rayOut .55s ease-out forwards;}
+  @keyframes rayOut{0%{opacity:1;transform:translate(-50%,-50%) rotate(var(--a)) translateX(0);}100%{opacity:0;transform:translate(-50%,-50%) rotate(var(--a)) translateX(160px);}}
+
+  #transition-label{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:82;font-family:'Orbitron',sans-serif;font-size:1rem;letter-spacing:4px;color:#eafcff;text-transform:uppercase;opacity:0;text-shadow:0 0 10px rgba(143,232,255,.8);white-space:nowrap;pointer-events:none;}
+  #transition-label.show{animation:labelPulse .5s ease-out forwards;}
+  @keyframes labelPulse{0%{opacity:0;transform:translate(-50%,-50%) scale(.85);}60%{opacity:1;transform:translate(-50%,-50%) scale(1.05);}100%{opacity:1;transform:translate(-50%,-50%) scale(1);}}
 
   #login-flash{position:fixed;inset:0;background:#eafcff;opacity:0;pointer-events:none;z-index:80;}
   #login-flash.flash{animation:loginFlash .4s ease-out forwards;}
@@ -156,6 +167,12 @@
   .panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:12px;}
   .panel .title{font-size:1rem;letter-spacing:3px;color:#2ab8d9;text-transform:uppercase;}
   .panel-actions{display:flex;gap:10px;flex-wrap:wrap;}
+  .total-badge{
+    display:flex;align-items:center;gap:10px;padding:8px 16px;
+    border:1px solid rgba(143,232,255,.4);background:rgba(42,184,217,.06);
+    font-size:0.72rem;letter-spacing:1.5px;color:#4a90a8;text-transform:uppercase;
+  }
+  .total-badge .amount{font-family:'Orbitron',sans-serif;font-size:1.05rem;color:#e8fbff;letter-spacing:0.5px;text-shadow:0 0 8px rgba(143,232,255,.5);}
 
   table{width:100%;border-collapse:collapse;font-size:0.95rem;}
   th{text-align:left;font-size:0.75rem;letter-spacing:1px;color:#4a90a8;text-transform:uppercase;padding-bottom:10px;border-bottom:1px solid rgba(42,184,217,.2);}
@@ -218,6 +235,7 @@
   <div class="scanline"></div>
   <div class="nav-item active" data-view="home" data-text="Home">Home</div>
   <div class="nav-item" data-view="contratti" data-text="Contratti telefonici">Contratti telefonici</div>
+  <div class="nav-item" data-view="abbonamenti" data-text="Abbonamenti">Abbonamenti</div>
 </div>
 
 <!-- ===== APP ===== -->
@@ -226,7 +244,7 @@
     <button class="hamburger" id="btn-hamburger"><span></span><span></span><span></span></button>
     <div class="orb" id="topbar-title">J.A.R.V.I.S.</div>
     <div class="right">
-      <span class="email" id="user-email"></span>
+      <span class="email" id="user-name"></span>
       <span class="logout" id="btn-logout">Esci</span>
     </div>
   </div>
@@ -272,6 +290,7 @@
     <div class="panel">
       <div class="panel-head">
         <div class="title">◈ contratti telefonici</div>
+        <div class="total-badge">Totale mensile <span class="amount" id="contratti-total-value">€ 0.00</span></div>
         <div class="panel-actions">
           <button class="btn small ghost" id="btn-gestisci-campi">Gestisci campi</button>
           <button class="btn small" id="btn-nuovo-contratto">+ Nuovo contratto</button>
@@ -286,9 +305,31 @@
       </div>
     </div>
   </div>
+
+  <!-- ABBONAMENTI -->
+  <div id="view-abbonamenti" class="hidden">
+    <div class="panel">
+      <div class="panel-head">
+        <div class="title">◈ abbonamenti</div>
+        <div class="total-badge">Totale mensile <span class="amount" id="abbonamenti-total-value">€ 0.00</span></div>
+        <div class="panel-actions">
+          <button class="btn small ghost" id="btn-gestisci-campi-abbonamenti">Gestisci campi</button>
+          <button class="btn small" id="btn-nuovo-abbonamento">+ Nuovo abbonamento</button>
+        </div>
+      </div>
+      <div id="abbonamenti-table-wrap">
+        <table id="abbonamenti-table">
+          <thead><tr id="abbonamenti-thead-row"></tr></thead>
+          <tbody id="abbonamenti-tbody"></tbody>
+        </table>
+        <div id="abbonamenti-empty" class="hidden">Nessun abbonamento salvato. Usa "+ Nuovo abbonamento" per iniziare.</div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ===== MODAL: SCHEDA CONTRATTO ===== -->
+<!-- riusata sia per contratti che per abbonamenti -->
 <div id="modal-contratto" class="modal-overlay hidden">
   <div class="modal">
     <span class="modal-close" data-close="modal-contratto">✕</span>
@@ -319,5 +360,6 @@
 <script src="app.js"></script>
 <div id="login-flash"></div>
 <div id="login-iris"></div>
+<div id="transition-label">Accesso consentito</div>
 </body>
 </html>
