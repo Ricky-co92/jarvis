@@ -29,11 +29,12 @@ const DEFAULT_CAMPI_CONTRATTI = [
 ];
 
 const DEFAULT_CAMPI_ABBONAMENTI = [
-  { chiave:"servizio", etichetta:"Servizio",       tipo:"testo", ordine:0, mostra_in_tabella:true },
-  { chiave:"costo",    etichetta:"Costo",          tipo:"euro",  ordine:1, mostra_in_tabella:true },
-  { chiave:"mdp",      etichetta:"Come lo pago",   tipo:"testo", ordine:2, mostra_in_tabella:true },
-  { chiave:"note",     etichetta:"Note",           tipo:"testo", ordine:3, mostra_in_tabella:false },
-  { chiave:"rinnovo",  etichetta:"Rinnovo",        tipo:"data",  ordine:4, mostra_in_tabella:false },
+  { chiave:"servizio",    etichetta:"Servizio",       tipo:"testo",       ordine:0, mostra_in_tabella:true },
+  { chiave:"costo",       etichetta:"Costo",          tipo:"euro",        ordine:1, mostra_in_tabella:true },
+  { chiave:"periodicita", etichetta:"Periodicità",    tipo:"periodicita", ordine:2, mostra_in_tabella:true },
+  { chiave:"mdp",         etichetta:"Come lo pago",   tipo:"testo",       ordine:3, mostra_in_tabella:true },
+  { chiave:"note",        etichetta:"Note",           tipo:"testo",       ordine:4, mostra_in_tabella:false },
+  { chiave:"rinnovo",     etichetta:"Rinnovo",        tipo:"data",        ordine:5, mostra_in_tabella:false },
 ];
 
 // ---------- REGISTRO SEZIONI (tabella dinamica generica) ----------
@@ -46,6 +47,7 @@ const SECTIONS = {
   abbonamenti: {
     table: "abbonamenti", camposTable: "abbonamenti_campi",
     defaultCampi: DEFAULT_CAMPI_ABBONAMENTI, totalField: "costo",
+    periodicityField: "periodicita",
     campi: [], records: []
   }
 };
@@ -395,6 +397,15 @@ async function ensureCampi(section){
   } else {
     cfg.campi = data;
   }
+
+  // migrazione: chi aveva già creato gli abbonamenti prima dell'introduzione della periodicità
+  if(cfg.periodicityField && !cfg.campi.find(c=>c.chiave===cfg.periodicityField)){
+    const { data: added, error: addErr } = await sb.from(cfg.camposTable).insert({
+      chiave: cfg.periodicityField, etichetta:"Periodicità", tipo:"periodicita",
+      ordine: cfg.campi.length, mostra_in_tabella:true, user_id: currentUser.id
+    }).select();
+    if(!addErr && added) cfg.campi.push(added[0]);
+  }
 }
 
 async function loadRecords(section){
@@ -408,7 +419,9 @@ function updateTotal(section){
   const cfg = SECTIONS[section];
   const sum = cfg.records.reduce((acc, r) => {
     const v = parseFloat(r.dati[cfg.totalField]);
-    return acc + (isNaN(v) ? 0 : v);
+    if(isNaN(v)) return acc;
+    const isAnnuale = cfg.periodicityField && r.dati[cfg.periodicityField] === "annuale";
+    return acc + (isAnnuale ? v/12 : v);
   }, 0);
   const el = document.getElementById(section + "-total-value");
   if(el) el.textContent = "€ " + sum.toFixed(2);
@@ -444,6 +457,7 @@ function renderTable(section){
 function formatValue(val, tipo){
   if(val===undefined || val===null || val==="") return "\u2014";
   if(tipo==="euro") return "\u20ac " + Number(val).toFixed(2);
+  if(tipo==="periodicita") return val==="annuale" ? "Annuale" : "Mensile";
   return escapeHtml(String(val));
 }
 
@@ -468,6 +482,13 @@ function openRecordModal(section, record){
   const ordinati = [...cfg.campi].sort((a,b)=>a.ordine-b.ordine);
   wrap.innerHTML = ordinati.map(c=>{
     const val = record ? (record.dati[c.chiave] ?? "") : "";
+    if(c.tipo === "periodicita"){
+      return `<div class="field"><label>${escapeHtml(c.etichetta)}</label>
+        <select data-chiave="${c.chiave}">
+          <option value="mensile"${val!=="annuale"?" selected":""}>Mensile</option>
+          <option value="annuale"${val==="annuale"?" selected":""}>Annuale (diviso automaticamente nel totale mensile)</option>
+        </select></div>`;
+    }
     const inputType = c.tipo==="data" ? "date" : (c.tipo==="numero"||c.tipo==="euro" ? "number" : "text");
     const step = c.tipo==="euro" ? ' step="0.01"' : "";
     return `<div class="field"><label>${escapeHtml(c.etichetta)}</label>
@@ -478,7 +499,7 @@ function openRecordModal(section, record){
 
 async function saveRecord(){
   const cfg = SECTIONS[activeSection];
-  const inputs = document.querySelectorAll("#modal-contratto-fields input");
+  const inputs = document.querySelectorAll("#modal-contratto-fields input, #modal-contratto-fields select");
   const dati = {};
   inputs.forEach(inp=>{
     if(inp.value !== "") dati[inp.dataset.chiave] = inp.value;
@@ -530,6 +551,7 @@ function buildCampoRow(campo){
       <option value="numero"${campo.tipo==="numero"?" selected":""}>Numero</option>
       <option value="euro"${campo.tipo==="euro"?" selected":""}>Euro</option>
       <option value="data"${campo.tipo==="data"?" selected":""}>Data</option>
+      <option value="periodicita"${campo.tipo==="periodicita"?" selected":""}>Periodicità (mensile/annuale)</option>
     </select>
     <label class="chk"><input type="checkbox" class="campo-mostra"${campo.mostra_in_tabella?" checked":""}> in tabella</label>
     <span class="campo-del">✕</span>
