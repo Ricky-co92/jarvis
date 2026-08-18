@@ -3,6 +3,8 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 });
 
 let currentUser = null;
+let weatherData = null;
+let weatherCity = "";
 
 // ---------- CAMPI DI DEFAULT PER SEZIONE ----------
 const DEFAULT_CAMPI_CONTRATTI = [
@@ -195,6 +197,7 @@ function bindStaticEvents(){
   document.getElementById("btn-gestisci-campi").addEventListener("click", ()=> openCampiModal("contratti"));
   document.getElementById("btn-nuovo-abbonamento").addEventListener("click", ()=> openRecordModal("abbonamenti", null));
   document.getElementById("btn-gestisci-campi-abbonamenti").addEventListener("click", ()=> openCampiModal("abbonamenti"));
+  document.getElementById("mod-weather").addEventListener("click", openWeatherModal);
 
   document.getElementById("btn-salva-contratto").addEventListener("click", saveRecord);
   document.getElementById("btn-elimina-contratto").addEventListener("click", deleteRecord);
@@ -267,9 +270,10 @@ async function loadWeather(){
   navigator.geolocation.getCurrentPosition(async (pos)=>{
     const { latitude, longitude } = pos.coords;
     try{
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code&timezone=auto`;
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code,relative_humidity_2m,apparent_temperature,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset&timezone=auto`;
       const res = await fetch(url);
       const data = await res.json();
+      weatherData = data;
       const temp = Math.round(data.current.temperature_2m);
       const cond = WEATHER_CODES[data.current.weather_code] || "—";
       document.getElementById("weather-temp").textContent = temp + "°";
@@ -277,9 +281,32 @@ async function loadWeather(){
       const geoRes = await fetch(geoUrl);
       const geoData = await geoRes.json();
       const city = geoData.results && geoData.results[0] ? geoData.results[0].name : "";
+      weatherCity = city;
       document.getElementById("weather-loc").textContent = city || cond;
     }catch(e){ console.warn("Meteo non disponibile", e); }
   }, ()=>{ console.warn("Geolocalizzazione negata"); });
+}
+
+function openWeatherModal(){
+  const body = document.getElementById("modal-meteo-body");
+  document.getElementById("modal-meteo-title").textContent = weatherCity ? `Meteo — ${weatherCity}` : "Meteo";
+  if(!weatherData){
+    body.innerHTML = "Dati meteo non disponibili. Verifica di aver concesso il permesso di posizione.";
+  } else {
+    const c = weatherData.current;
+    const d = weatherData.daily;
+    const cond = WEATHER_CODES[c.weather_code] || "—";
+    body.innerHTML = `
+      <div>Condizione: <b style="color:#8fe8ff">${cond}</b></div>
+      <div>Temperatura: <b style="color:#8fe8ff">${Math.round(c.temperature_2m)}°C</b></div>
+      <div>Percepita: ${Math.round(c.apparent_temperature)}°C</div>
+      <div>Umidità: ${c.relative_humidity_2m}%</div>
+      <div>Vento: ${Math.round(c.wind_speed_10m)} km/h</div>
+      <div>Min / Max oggi: ${Math.round(d.temperature_2m_min[0])}° / ${Math.round(d.temperature_2m_max[0])}°</div>
+      <div>Alba: ${d.sunrise[0].slice(11,16)} · Tramonto: ${d.sunset[0].slice(11,16)}</div>
+    `;
+  }
+  document.getElementById("modal-meteo").classList.remove("hidden");
 }
 
 // ---------- LOGIN / LOGOUT ----------

@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#05141c">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -22,6 +22,8 @@
     color:#8fe8ff;font-family:'Share Tech Mono',monospace;
     min-height:100vh; min-height:100dvh;
     font-size:1rem; overflow-x:hidden;
+    padding-top:env(safe-area-inset-top);
+    padding-bottom:env(safe-area-inset-bottom);
   }
   .orb{font-family:'Orbitron',sans-serif;}
   .hidden{display:none !important;}
@@ -272,7 +274,7 @@
     </div>
 
     <div class="side-mods">
-      <div class="hex-mod" id="mod-weather">
+      <div class="hex-mod" id="mod-weather" style="cursor:pointer;">
         <div class="corner-tick ct-tr"></div><div class="corner-tick ct-bl"></div>
         <div class="hex-ring"><svg viewBox="0 0 88 88">
           <circle class="hex-ring-outer" cx="44" cy="44" r="41"/>
@@ -354,6 +356,15 @@
       <span></span>
       <button class="btn small" id="btn-salva-campi">Salva campi</button>
     </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: METEO DETTAGLIO ===== -->
+<div id="modal-meteo" class="modal-overlay hidden">
+  <div class="modal">
+    <span class="modal-close" data-close="modal-meteo">✕</span>
+    <div class="title" id="modal-meteo-title">Meteo</div>
+    <div id="modal-meteo-body" style="font-size:0.95rem;line-height:2;color:#c9f2ff;"></div>
   </div>
 </div>
 
