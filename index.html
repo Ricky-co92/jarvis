@@ -39,6 +39,26 @@
   .pulse{animation:pulseCore 3.6s ease-in-out infinite;}
   .dot{animation:dotGlow 2.4s ease-in-out infinite;}
 
+  /* transizione di accesso: il core si "monta" (assemble), poi carica, poi flash + iris */
+  .core-anim .spin-1,.core-anim .spin-2,.core-anim .spin-3{transition:opacity .55s ease, filter .55s ease;}
+  .core-anim.assembling .spin-1{opacity:0;filter:blur(10px);transition-delay:0s;}
+  .core-anim.assembling .spin-2{opacity:0;filter:blur(10px);transition-delay:.14s;}
+  .core-anim.assembling .spin-3{opacity:0;filter:blur(10px);transition-delay:.28s;}
+  .core-anim.charging .spin-1,.core-anim.charging .spin-2,.core-anim.charging .spin-3{filter:brightness(1.5);}
+  .core-anim.charging .pulse{animation:pulseFast .4s ease-in-out infinite;}
+  @keyframes pulseFast{0%,100%{opacity:.85}50%{opacity:1}}
+  .charge-arc{transition:stroke-dasharray .6s cubic-bezier(.2,.7,.3,1);}
+
+  #login-flash{position:fixed;inset:0;background:#eafcff;opacity:0;pointer-events:none;z-index:80;}
+  #login-flash.flash{animation:loginFlash .4s ease-out forwards;}
+  @keyframes loginFlash{0%{opacity:0}45%{opacity:.95}100%{opacity:0}}
+
+  #login-iris{position:fixed;inset:0;background:#010508;z-index:75;clip-path:circle(0% at 50% 50%);pointer-events:none;}
+  #login-iris.opening{animation:irisOpenKF .7s ease-out forwards;}
+  @keyframes irisOpenKF{from{clip-path:circle(150% at 50% 50%);}to{clip-path:circle(0% at 50% 50%);}}
+  #login .field, #login .btn{transition:opacity .3s ease;}
+  #login.fading .field, #login.fading .btn{opacity:0;pointer-events:none;}
+
   /* ============ LOGIN ============ */
   #screen-login{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px;}
   #login{max-width:440px;width:100%;text-align:center;}
@@ -94,22 +114,37 @@
   .nav-item.active::before{content:'';position:absolute;left:12px;top:50%;transform:translateY(-50%);width:5px;height:5px;border-radius:50%;background:#8fe8ff;box-shadow:0 0 6px #8fe8ff;}
 
   /* ============ HOME ============ */
-  #view-home{flex:1;display:grid;grid-template-columns:1fr minmax(300px,460px) 1fr;align-items:center;gap:20px;min-height:calc(100vh - 120px);min-height:calc(100dvh - 120px);}
-  .side-widget{border:1px solid rgba(42,184,217,.25);padding:20px;position:relative;justify-self:start;}
-  .side-widget.right{justify-self:end;}
-  .side-widget::before,.side-widget::after{content:'';position:absolute;width:12px;height:12px;border:1px solid #2ab8d9;}
-  .side-widget::before{top:-1px;left:-1px;border-right:none;border-bottom:none;}
-  .side-widget::after{bottom:-1px;right:-1px;border-left:none;border-top:none;}
-  .datetime .time{font-family:'Orbitron',sans-serif;font-size:2.2rem;color:#e8fbff;letter-spacing:2px;line-height:1;}
-  .datetime .date{font-size:0.8rem;letter-spacing:2px;color:#4a90a8;text-transform:uppercase;margin-top:8px;}
-  .weather{display:flex;align-items:center;gap:16px;}
-  .weather .icon{width:42px;height:42px;flex-shrink:0;}
-  .weather .temp{font-family:'Orbitron',sans-serif;font-size:1.7rem;color:#e8fbff;}
-  .weather .cond{font-size:0.78rem;letter-spacing:1px;color:#4a90a8;text-transform:uppercase;margin-top:4px;}
-  .weather .loc{font-size:0.68rem;letter-spacing:2px;color:#3a7a92;text-transform:uppercase;margin-top:2px;}
+  #view-home{flex:1;display:flex;align-items:center;justify-content:center;gap:50px;min-height:calc(100vh - 120px);min-height:calc(100dvh - 120px);flex-wrap:wrap;}
+  .side-mods{display:flex;flex-direction:column;gap:24px;}
   .center-col{display:flex;flex-direction:column;align-items:center;}
   .center-col .core-anim{width:min(30vw,320px);height:min(30vw,320px);aspect-ratio:1/1;}
   .welcome{margin-top:24px;font-size:1rem;letter-spacing:3px;color:#4a90a8;text-transform:uppercase;}
+
+  /* modulo hex-gauge (ora/data/meteo) */
+  .hex-mod{
+    width:150px;aspect-ratio:1/1;position:relative;
+    background:radial-gradient(circle at 50% 42%, rgba(143,232,255,.12), transparent 60%), linear-gradient(160deg, rgba(42,184,217,.1), rgba(4,14,20,.7));
+    clip-path:polygon(24px 0, 100% 0, 100% calc(100% - 24px), calc(100% - 24px) 100%, 0 100%, 0 24px);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+    box-shadow:0 0 0 1px rgba(143,232,255,.55), 0 0 22px rgba(42,184,217,.35), inset 0 0 30px rgba(42,184,217,.12);
+    overflow:hidden;flex-shrink:0;
+  }
+  .hex-mod::before{
+    content:'';position:absolute;inset:0;opacity:.5;
+    background-image:repeating-linear-gradient(0deg, transparent 0 7px, rgba(143,232,255,.05) 7px 8px), repeating-linear-gradient(90deg, transparent 0 7px, rgba(143,232,255,.05) 7px 8px);
+  }
+  .hex-mod .corner-tick{position:absolute;width:9px;height:9px;border:1px solid #8fe8ff;opacity:.9;}
+  .hex-mod .ct-tr{top:6px;right:6px;border-left:none;border-bottom:none;}
+  .hex-mod .ct-bl{bottom:6px;left:6px;border-right:none;border-top:none;}
+  .hex-ring{width:88px;height:88px;position:relative;z-index:1;}
+  .hex-ring svg{width:100%;height:100%;overflow:visible;}
+  .hex-ticks{animation:spinCW 240s linear infinite;transform-origin:44px 44px;}
+  .hex-ring-outer{fill:none;stroke:rgba(143,232,255,.25);stroke-width:1;}
+  .hex-ring-bg{fill:none;stroke:rgba(42,184,217,.18);stroke-width:5;}
+  .hex-ring-fg{fill:none;stroke:#8fe8ff;stroke-width:5;stroke-linecap:round;filter:drop-shadow(0 0 5px #8fe8ff) drop-shadow(0 0 10px rgba(42,184,217,.6));}
+  .hex-ring-accent{fill:none;stroke:#ffb020;stroke-width:2;stroke-linecap:round;opacity:.85;animation:spinCCW 30s linear infinite;transform-origin:44px 44px;filter:drop-shadow(0 0 4px #ffb020);}
+  .hex-val{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:2;font-family:'Orbitron',sans-serif;font-size:1.05rem;color:#f2fdff;text-shadow:0 0 8px rgba(143,232,255,.8), 0 0 18px rgba(42,184,217,.5);}
+  .hex-mod .hex-lbl{font-size:0.62rem;letter-spacing:2.5px;color:#5fa8c2;text-transform:uppercase;z-index:1;text-shadow:0 0 6px rgba(42,184,217,.4);}
 
   #view-contratti{flex:1;display:flex;flex-direction:column;}
 
@@ -131,9 +166,12 @@
 
   /* mobile */
   @media (max-width: 900px){
-    #view-home{grid-template-columns:1fr;grid-template-rows:auto auto 1fr;min-height:auto;gap:16px;}
-    .side-widget,.side-widget.right{justify-self:stretch;}
-    .center-col{order:3;padding:20px 0;}
+    #view-home{flex-direction:column;min-height:auto;gap:22px;padding:20px 0;}
+    .center-col{order:1;}
+    .side-mods{order:2;flex-direction:row;flex-wrap:wrap;justify-content:center;}
+    .hex-mod{width:110px;}
+    .hex-ring{width:64px;height:64px;}
+    .hex-val{font-size:0.78rem;}
   }
   @media (max-width: 760px){
     :root{ font-size:16px; }
@@ -195,9 +233,18 @@
 
   <!-- HOME -->
   <div id="view-home">
-    <div class="side-widget datetime">
-      <div class="time" id="clock">--:--:--</div>
-      <div class="date" id="dateStr">—</div>
+    <div class="side-mods">
+      <div class="hex-mod" id="mod-time">
+        <div class="corner-tick ct-tr"></div><div class="corner-tick ct-bl"></div>
+        <div class="hex-ring"><svg viewBox="0 0 88 88">
+          <circle class="hex-ring-outer" cx="44" cy="44" r="41"/>
+          <g class="hex-ticks" id="mod-time-ticks"></g>
+          <circle class="hex-ring-bg" cx="44" cy="44" r="35"/>
+          <circle class="hex-ring-fg" cx="44" cy="44" r="35" stroke-dasharray="146 74" transform="rotate(-90 44 44)"/>
+          <circle class="hex-ring-accent" cx="44" cy="44" r="28" stroke-dasharray="18 158" transform="rotate(-90 44 44)"/>
+        </svg><div class="hex-val" id="clock">--:--</div></div>
+        <div class="hex-lbl" id="dateStr">—</div>
+      </div>
     </div>
 
     <div class="center-col">
@@ -205,18 +252,17 @@
       <div class="welcome" id="welcome-text">bentornato</div>
     </div>
 
-    <div class="side-widget weather right">
-      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#8fe8ff" stroke-width="1.4">
-        <circle cx="12" cy="12" r="5"/>
-        <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
-        <line x1="4.2" y1="4.2" x2="5.6" y2="5.6"/><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"/>
-        <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
-        <line x1="4.2" y1="19.8" x2="5.6" y2="18.4"/><line x1="18.4" y1="5.6" x2="19.8" y2="4.2"/>
-      </svg>
-      <div>
-        <div class="temp" id="weather-temp">—</div>
-        <div class="cond" id="weather-cond">Meteo non disponibile</div>
-        <div class="loc" id="weather-loc"></div>
+    <div class="side-mods">
+      <div class="hex-mod" id="mod-weather">
+        <div class="corner-tick ct-tr"></div><div class="corner-tick ct-bl"></div>
+        <div class="hex-ring"><svg viewBox="0 0 88 88">
+          <circle class="hex-ring-outer" cx="44" cy="44" r="41"/>
+          <g class="hex-ticks" id="mod-weather-ticks"></g>
+          <circle class="hex-ring-bg" cx="44" cy="44" r="35"/>
+          <circle class="hex-ring-fg" cx="44" cy="44" r="35" stroke-dasharray="120 100" transform="rotate(-90 44 44)"/>
+          <circle class="hex-ring-accent" cx="44" cy="44" r="28" stroke-dasharray="14 162" transform="rotate(-90 44 44)"/>
+        </svg><div class="hex-val" id="weather-temp">—</div></div>
+        <div class="hex-lbl" id="weather-loc">Meteo</div>
       </div>
     </div>
   </div>
@@ -271,5 +317,7 @@
 
 <script src="config.js"></script>
 <script src="app.js"></script>
+<div id="login-flash"></div>
+<div id="login-iris"></div>
 </body>
 </html>

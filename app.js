@@ -1,4 +1,6 @@
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: { persistSession: false }
+});
 
 let currentUser = null;
 let campi = [];       // definizione campi dinamici
@@ -32,40 +34,62 @@ const CORE_SVG = `
 <svg viewBox="0 0 420 420">
   <defs>
     <radialGradient id="coreGrad" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#eafcff"/>
-      <stop offset="30%" stop-color="#8fe8ff"/>
-      <stop offset="65%" stop-color="#2ab8d9" stop-opacity="0.4"/>
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="20%" stop-color="#eafcff"/>
+      <stop offset="45%" stop-color="#8fe8ff"/>
+      <stop offset="75%" stop-color="#2ab8d9" stop-opacity="0.5"/>
       <stop offset="100%" stop-color="#2ab8d9" stop-opacity="0"/>
     </radialGradient>
     <radialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#0a2a38" stop-opacity="0.5"/>
+      <stop offset="0%" stop-color="#0f3a4a" stop-opacity="0.6"/>
+      <stop offset="60%" stop-color="#0a2a38" stop-opacity="0.25"/>
       <stop offset="100%" stop-color="#0a2a38" stop-opacity="0"/>
     </radialGradient>
+    <filter id="glowSoft" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glowStrong" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="9" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <pattern id="grid" width="14" height="14" patternUnits="userSpaceOnUse">
+      <path d="M 14 0 L 0 0 0 14" fill="none" stroke="rgba(143,232,255,.08)" stroke-width="1"/>
+    </pattern>
   </defs>
   <circle cx="210" cy="210" r="205" fill="url(#bgGlow)"/>
-  <g class="spin-1">
-    <circle cx="210" cy="210" r="196" fill="none" stroke="rgba(42,184,217,.25)" stroke-width="14"/>
-    <circle cx="210" cy="210" r="196" fill="none" stroke="rgba(143,232,255,.5)" stroke-width="1"/>
+  <circle cx="210" cy="210" r="196" fill="url(#grid)" opacity="0.5"/>
+  <g class="spin-1" filter="url(#glowSoft)">
+    <circle cx="210" cy="210" r="196" fill="none" stroke="rgba(42,184,217,.3)" stroke-width="14"/>
+    <circle cx="210" cy="210" r="196" fill="none" stroke="rgba(143,232,255,.6)" stroke-width="1"/>
     <circle cx="210" cy="210" r="182" fill="none" stroke="rgba(143,232,255,.5)" stroke-width="1"/>
     <g class="core-ticks" stroke="#8fe8ff" stroke-width="2"></g>
   </g>
-  <g class="spin-2">
-    <circle cx="210" cy="210" r="196" fill="none" stroke="#ffb020" stroke-width="10" stroke-dasharray="140 900" stroke-linecap="round" opacity="0.85"/>
+  <g class="spin-2" filter="url(#glowStrong)">
+    <circle cx="210" cy="210" r="196" fill="none" stroke="#ffb020" stroke-width="9" stroke-dasharray="140 900" stroke-linecap="round" opacity="0.9"/>
   </g>
-  <g class="spin-2"><g class="core-dots"></g></g>
-  <g class="spin-3">
-    <circle cx="210" cy="210" r="150" fill="none" stroke="#2ab8d9" stroke-width="4" stroke-dasharray="16 10" opacity="0.55"/>
+  <g class="spin-2" filter="url(#glowSoft)"><g class="core-dots"></g></g>
+  <g class="spin-3" filter="url(#glowSoft)">
+    <circle cx="210" cy="210" r="150" fill="none" stroke="#2ab8d9" stroke-width="4" stroke-dasharray="16 10" opacity="0.6"/>
   </g>
-  <circle cx="210" cy="210" r="118" fill="none" stroke="rgba(143,232,255,.4)" stroke-width="1"/>
-  <circle cx="210" cy="210" r="112" fill="none" stroke="rgba(42,184,217,.25)" stroke-width="1"/>
-  <circle class="pulse" cx="210" cy="210" r="70" fill="url(#coreGrad)"/>
-  <circle cx="210" cy="210" r="24" fill="#eafcff" opacity="0.95"/>
+  <circle cx="210" cy="210" r="118" fill="none" stroke="rgba(143,232,255,.45)" stroke-width="1"/>
+  <circle cx="210" cy="210" r="112" fill="none" stroke="rgba(42,184,217,.3)" stroke-width="1"/>
+  <line x1="210" y1="98" x2="210" y2="118" stroke="#8fe8ff" stroke-width="1" opacity="0.5"/>
+  <line x1="210" y1="302" x2="210" y2="322" stroke="#8fe8ff" stroke-width="1" opacity="0.5"/>
+  <line x1="98" y1="210" x2="118" y2="210" stroke="#8fe8ff" stroke-width="1" opacity="0.5"/>
+  <line x1="302" y1="210" x2="322" y2="210" stroke="#8fe8ff" stroke-width="1" opacity="0.5"/>
+  <circle class="pulse" cx="210" cy="210" r="72" fill="url(#coreGrad)" filter="url(#glowStrong)"/>
+  <circle cx="210" cy="210" r="26" fill="#ffffff" opacity="0.95" filter="url(#glowSoft)"/>
 </svg>`;
 
 function renderCoreAnim(containerId){
   const el = document.getElementById(containerId);
   if(!el || el.dataset.rendered) return;
-  el.innerHTML = CORE_SVG;
+  // rende univoci gli id SVG (coreGrad, bgGlow, glowSoft, glowStrong, grid) per evitare conflitti se il core compare più volte in pagina
+  const suffix = "-" + containerId;
+  const svgHtml = CORE_SVG.replace(/id="([a-zA-Z]+)"/g, `id="$1${suffix}"`)
+                           .replace(/url\(#([a-zA-Z]+)\)/g, `url(#$1${suffix})`);
+  el.innerHTML = svgHtml;
   el.dataset.rendered = "1";
   const ticks = el.querySelector(".core-ticks");
   for(let i=0;i<60;i++){
@@ -90,9 +114,29 @@ function renderCoreAnim(containerId){
   });
 }
 
+// ---------- HEX MODULE TICKS ----------
+function renderHexTicks(groupId){
+  const g = document.getElementById(groupId);
+  if(!g || g.dataset.rendered) return;
+  g.dataset.rendered = "1";
+  for(let i=0;i<36;i++){
+    const angle=(i/36)*360, long=i%3===0;
+    const line=document.createElementNS("http://www.w3.org/2000/svg","line");
+    line.setAttribute("x1","44"); line.setAttribute("y1", long?"3":"5");
+    line.setAttribute("x2","44"); line.setAttribute("y2","8");
+    line.setAttribute("stroke","#8fe8ff");
+    line.setAttribute("stroke-width", long?"1.3":"0.8");
+    line.setAttribute("opacity", long?"0.85":"0.35");
+    line.setAttribute("transform", `rotate(${angle} 44 44)`);
+    g.appendChild(line);
+  }
+}
+
 // ---------- INIT ----------
 window.addEventListener("DOMContentLoaded", async () => {
   renderCoreAnim("core-login");
+  renderHexTicks("mod-time-ticks");
+  renderHexTicks("mod-weather-ticks");
   bindStaticEvents();
   startClock();
   const { data: { session } } = await sb.auth.getSession();
@@ -164,11 +208,11 @@ function startClock(){
     const now = new Date();
     const clockEl = document.getElementById("clock");
     const dateEl = document.getElementById("dateStr");
-    if(clockEl) clockEl.textContent = now.toLocaleTimeString("it-IT");
-    if(dateEl) dateEl.textContent = now.toLocaleDateString("it-IT", {weekday:"long", day:"numeric", month:"long", year:"numeric"});
+    if(clockEl) clockEl.textContent = now.toLocaleTimeString("it-IT", {hour:"2-digit", minute:"2-digit"});
+    if(dateEl) dateEl.textContent = now.toLocaleDateString("it-IT", {day:"numeric", month:"short"});
   }
   tick();
-  setInterval(tick, 1000);
+  setInterval(tick, 30000);
 }
 
 // ---------- METEO (geolocalizzazione + Open-Meteo, nessuna API key) ----------
@@ -191,13 +235,12 @@ async function loadWeather(){
       const data = await res.json();
       const temp = Math.round(data.current.temperature_2m);
       const cond = WEATHER_CODES[data.current.weather_code] || "—";
-      document.getElementById("weather-temp").textContent = temp + "°C";
-      document.getElementById("weather-cond").textContent = cond;
+      document.getElementById("weather-temp").textContent = temp + "°";
       const geoUrl = `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${latitude}&longitude=${longitude}&language=it`;
       const geoRes = await fetch(geoUrl);
       const geoData = await geoRes.json();
       const city = geoData.results && geoData.results[0] ? geoData.results[0].name : "";
-      if(city) document.getElementById("weather-loc").textContent = city;
+      document.getElementById("weather-loc").textContent = city || cond;
     }catch(e){ console.warn("Meteo non disponibile", e); }
   }, ()=>{ console.warn("Geolocalizzazione negata"); });
 }
@@ -211,7 +254,53 @@ async function handleLoginOrSignup(){
 
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
   if(error){ errEl.textContent = "Credenziali non valide."; return; }
+  await playLoginTransition();
   await onLogin(data.user);
+}
+
+// ---------- TRANSIZIONE DI ACCESSO: il core si "monta", poi carica, poi flash + iris ----------
+function wait(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+async function playLoginTransition(){
+  const core = document.getElementById("core-login");
+  const loginBox = document.getElementById("login");
+
+  loginBox.classList.add("fading");
+
+  // fase 1: il core si smonta e rimonta (assemble)
+  core.classList.add("assembling");
+  await wait(30); // forza il layout prima di rimuovere, per far partire la transizione
+  core.classList.remove("assembling");
+  await wait(650);
+
+  // fase 2: carica (arco si riempie, glow intensifica)
+  core.classList.add("charging");
+  const accentArc = core.querySelector('circle[stroke="#ffb020"]');
+  if(accentArc){
+    accentArc.classList.add("charge-arc");
+    accentArc.style.strokeDasharray = "1233 0";
+  }
+  await wait(600);
+
+  // fase 3: flash
+  const flash = document.getElementById("login-flash");
+  flash.classList.add("flash");
+  await wait(180);
+
+  // fase 4: copri con l'iris e scambia le schermate sotto il flash
+  const iris = document.getElementById("login-iris");
+  iris.style.clipPath = "circle(150% at 50% 50%)";
+  document.getElementById("screen-login").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
+
+  await wait(80);
+  flash.classList.remove("flash");
+
+  // fase 5: apri l'iris rivelando la home
+  iris.style.clipPath = "";
+  iris.classList.add("opening");
+  await wait(720);
+  iris.classList.remove("opening");
 }
 
 async function handleLogout(){
@@ -223,8 +312,6 @@ async function handleLogout(){
 
 async function onLogin(user){
   currentUser = user;
-  document.getElementById("screen-login").classList.add("hidden");
-  document.getElementById("app").classList.remove("hidden");
   document.getElementById("user-email").textContent = user.email;
   document.getElementById("welcome-text").textContent = "bentornato, " + user.email.split("@")[0];
   renderCoreAnim("core-home");
