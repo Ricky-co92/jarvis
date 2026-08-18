@@ -20,25 +20,29 @@
     background:radial-gradient(ellipse at center, #05141c 0%, #010508 75%);
     color:#8fe8ff;font-family:'Share Tech Mono',monospace;
     min-height:100vh; min-height:100dvh;
-    font-size:1rem;
+    font-size:1rem; overflow-x:hidden;
   }
   .orb{font-family:'Orbitron',sans-serif;}
   .hidden{display:none !important;}
   a{color:inherit;text-decoration:none;}
+  @keyframes spinCW{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+  @keyframes spinCCW{from{transform:rotate(360deg)}to{transform:rotate(0)}}
+  @keyframes pulseCore{0%,100%{opacity:.8}50%{opacity:1}}
+  @keyframes dotGlow{0%,100%{opacity:.4}50%{opacity:1}}
+
+  /* ============ CORE (animazione condivisa login + home) ============ */
+  .core-anim{position:relative;}
+  .core-anim svg{width:100%;height:100%;overflow:visible;display:block;}
+  .spin-1{animation:spinCW 160s linear infinite;transform-origin:210px 210px;}
+  .spin-2{animation:spinCCW 70s linear infinite;transform-origin:210px 210px;}
+  .spin-3{animation:spinCW 45s linear infinite;transform-origin:210px 210px;}
+  .pulse{animation:pulseCore 3.6s ease-in-out infinite;}
+  .dot{animation:dotGlow 2.4s ease-in-out infinite;}
 
   /* ============ LOGIN ============ */
   #screen-login{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px;}
   #login{max-width:440px;width:100%;text-align:center;}
-  .reactor{width:44vw;max-width:240px;min-width:170px;aspect-ratio:1/1;margin:0 auto 24px;position:relative;}
-  .ring{position:absolute;top:50%;left:50%;border-radius:50%;border:1px solid rgba(42,184,217,.5);transform:translate(-50%,-50%);}
-  .ring.r1{width:100%;height:100%;border-style:dashed;animation:spin 40s linear infinite;}
-  .ring.r2{width:82%;height:82%;border-top-color:#2ab8d9;border-right-color:#2ab8d9;border-bottom-color:transparent;border-left-color:transparent;animation:spin 10s linear infinite;}
-  .ring.r3{width:68%;height:68%;border-style:dotted;animation:spin 25s linear infinite reverse;}
-  .ring.r4{width:50%;height:50%;border-top-color:transparent;border-left-color:#8fe8ff;animation:spin 6s linear infinite;}
-  .core{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:32%;height:32%;border-radius:50%;
-    background:radial-gradient(circle, rgba(143,232,255,.9) 0%, rgba(42,184,217,.3) 60%, transparent 100%);
-    box-shadow:0 0 30px rgba(143,232,255,.6);}
-  @keyframes spin{from{transform:translate(-50%,-50%) rotate(0)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+  #login .core-anim{width:min(52vw,260px);height:min(52vw,260px);aspect-ratio:1/1;margin:0 auto 24px;}
   #login h1{font-family:'Orbitron',sans-serif;font-size:1.7rem;letter-spacing:6px;color:#e8fbff;text-transform:uppercase;}
   #login .sub{font-size:0.95rem;letter-spacing:2px;color:#4a90a8;margin-top:8px;text-transform:uppercase;}
   .field{margin-top:22px;text-align:left;}
@@ -53,24 +57,59 @@
   .btn.ghost{border-color:rgba(42,184,217,.3);color:#4a90a8;}
   #login-error{margin-top:14px;font-size:0.85rem;color:#ff6767;min-height:16px;}
 
-  /* ============ APP SHELL ============ */
-  #app{max-width:1400px;width:100%;margin:0 auto;padding:24px 32px;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;}
-  .topbar{display:flex;justify-content:space-between;align-items:center;padding:10px 4px 18px;margin-bottom:20px;border-bottom:1px solid rgba(42,184,217,.25);}
+  /* ============ APP SHELL (full-width) ============ */
+  #app{width:100%;min-height:100vh;min-height:100dvh;padding:22px clamp(20px,4vw,60px);display:flex;flex-direction:column;}
+  .topbar{display:flex;align-items:center;gap:20px;padding-bottom:16px;margin-bottom:20px;border-bottom:1px solid rgba(42,184,217,.25);}
   .topbar .orb{font-size:1.1rem;letter-spacing:5px;color:#8fe8ff;}
-  .topbar .right{display:flex;align-items:center;gap:18px;font-size:0.85rem;color:#4a90a8;}
+  .topbar .right{margin-left:auto;display:flex;align-items:center;gap:18px;font-size:0.85rem;color:#4a90a8;}
   .topbar .right span.email{color:#8fe8ff;}
   .logout{cursor:pointer;letter-spacing:1px;}
   .logout:hover{color:#ff6767;}
 
-  .layout{display:grid;grid-template-columns:220px 1fr;gap:32px;flex:1;min-height:0;}
-  .nav-item{padding:13px 14px;font-size:0.95rem;letter-spacing:2px;color:#4a90a8;text-transform:uppercase;position:relative;cursor:pointer;border-radius:2px;}
-  .nav-item.active{color:#8fe8ff;background:rgba(42,184,217,.06);}
-  .nav-item.active::before{content:'';position:absolute;left:-12px;top:50%;transform:translateY(-50%);width:6px;height:6px;border-radius:50%;background:#8fe8ff;box-shadow:0 0 6px #8fe8ff;}
+  .hamburger{width:40px;height:40px;border:1px solid rgba(42,184,217,.4);display:flex;flex-direction:column;justify-content:center;align-items:center;gap:5px;cursor:pointer;background:transparent;flex-shrink:0;}
+  .hamburger span{width:18px;height:2px;background:#8fe8ff;transition:transform .3s, opacity .3s;}
+  .hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg);}
+  .hamburger.open span:nth-child(2){opacity:0;}
+  .hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
 
-  /* home */
-  #view-home{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;min-height:calc(100vh - 140px);min-height:calc(100dvh - 140px);}
-  #view-home .reactor{width:min(28vw,380px);}
-  #view-home .welcome{margin-top:30px;font-size:1.1rem;letter-spacing:3px;color:#4a90a8;text-transform:uppercase;}
+  /* ============ SIDEBAR OVERLAY ============ */
+  .backdrop{position:fixed;inset:0;background:rgba(1,5,8,.6);z-index:40;opacity:0;pointer-events:none;transition:opacity .3s;}
+  .backdrop.open{opacity:1;pointer-events:auto;}
+  #sidebar{
+    position:fixed;top:0;left:0;height:100%;width:260px;background:#05141c;
+    border-right:1px solid rgba(42,184,217,.35);z-index:41;padding:90px 0 20px;
+    transform:translateX(-100%);transition:transform .4s cubic-bezier(.2,.8,.2,1);overflow:hidden;
+  }
+  #sidebar.open{transform:translateX(0);}
+  .scanline{position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#8fe8ff,transparent);opacity:0;pointer-events:none;}
+  #sidebar.open .scanline{animation:scandown .6s ease-out;}
+  @keyframes scandown{0%{top:0;opacity:1}90%{opacity:1}100%{top:100%;opacity:0}}
+  .nav-item{padding:14px 28px;font-size:0.95rem;letter-spacing:2px;color:#4a90a8;text-transform:uppercase;cursor:pointer;position:relative;opacity:0;transform:translateX(-14px);}
+  #sidebar.open .nav-item{animation:itemIn .4s ease forwards;}
+  #sidebar.open .nav-item:nth-child(2){animation-delay:.15s;}
+  #sidebar.open .nav-item:nth-child(3){animation-delay:.28s;}
+  #sidebar.open .nav-item:nth-child(4){animation-delay:.41s;}
+  @keyframes itemIn{to{opacity:1;transform:translateX(0);}}
+  .nav-item.active{color:#8fe8ff;}
+  .nav-item.active::before{content:'';position:absolute;left:12px;top:50%;transform:translateY(-50%);width:5px;height:5px;border-radius:50%;background:#8fe8ff;box-shadow:0 0 6px #8fe8ff;}
+
+  /* ============ HOME ============ */
+  #view-home{flex:1;display:grid;grid-template-columns:1fr minmax(300px,460px) 1fr;align-items:center;gap:20px;min-height:calc(100vh - 120px);min-height:calc(100dvh - 120px);}
+  .side-widget{border:1px solid rgba(42,184,217,.25);padding:20px;position:relative;justify-self:start;}
+  .side-widget.right{justify-self:end;}
+  .side-widget::before,.side-widget::after{content:'';position:absolute;width:12px;height:12px;border:1px solid #2ab8d9;}
+  .side-widget::before{top:-1px;left:-1px;border-right:none;border-bottom:none;}
+  .side-widget::after{bottom:-1px;right:-1px;border-left:none;border-top:none;}
+  .datetime .time{font-family:'Orbitron',sans-serif;font-size:2.2rem;color:#e8fbff;letter-spacing:2px;line-height:1;}
+  .datetime .date{font-size:0.8rem;letter-spacing:2px;color:#4a90a8;text-transform:uppercase;margin-top:8px;}
+  .weather{display:flex;align-items:center;gap:16px;}
+  .weather .icon{width:42px;height:42px;flex-shrink:0;}
+  .weather .temp{font-family:'Orbitron',sans-serif;font-size:1.7rem;color:#e8fbff;}
+  .weather .cond{font-size:0.78rem;letter-spacing:1px;color:#4a90a8;text-transform:uppercase;margin-top:4px;}
+  .weather .loc{font-size:0.68rem;letter-spacing:2px;color:#3a7a92;text-transform:uppercase;margin-top:2px;}
+  .center-col{display:flex;flex-direction:column;align-items:center;}
+  .center-col .core-anim{width:min(30vw,320px);height:min(30vw,320px);aspect-ratio:1/1;}
+  .welcome{margin-top:24px;font-size:1rem;letter-spacing:3px;color:#4a90a8;text-transform:uppercase;}
 
   #view-contratti{flex:1;display:flex;flex-direction:column;}
 
@@ -91,15 +130,15 @@
   #contratti-empty{padding:30px 0;font-size:1rem;color:#4a90a8;text-align:center;}
 
   /* mobile */
+  @media (max-width: 900px){
+    #view-home{grid-template-columns:1fr;grid-template-rows:auto auto 1fr;min-height:auto;gap:16px;}
+    .side-widget,.side-widget.right{justify-self:stretch;}
+    .center-col{order:3;padding:20px 0;}
+  }
   @media (max-width: 760px){
     :root{ font-size:16px; }
-    #app{padding:14px;}
-    .layout{grid-template-columns:1fr;gap:14px;}
-    .layout > div:first-child{display:flex;gap:6px;overflow-x:auto;border-bottom:1px solid rgba(42,184,217,.2);padding-bottom:8px;}
-    .nav-item{white-space:nowrap;padding:9px 12px;font-size:0.85rem;}
-    .nav-item.active::before{display:none;}
+    #app{padding:16px;}
     .topbar .orb{font-size:0.95rem;letter-spacing:3px;}
-    #view-home{min-height:45vh;}
     .panel{padding:16px;}
     th:nth-child(n+4), td:nth-child(n+4){display:none;} /* mostra solo prime 3 colonne su mobile */
   }
@@ -123,64 +162,81 @@
 <!-- ===== LOGIN ===== -->
 <div id="screen-login">
   <div id="login">
-    <div class="reactor">
-      <div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div><div class="ring r4"></div>
-      <div class="core"></div>
-    </div>
+    <div class="core-anim" id="core-login"></div>
     <h1>J.A.R.V.I.S.</h1>
     <div class="sub">Sistema personale</div>
-    <div class="field"><label>Identificativo</label><input type="email" id="login-email" autocomplete="username"></div>
-    <div class="field"><label>Chiave di accesso</label><input type="password" id="login-password" autocomplete="current-password"></div>
-    <button class="btn" id="btn-login">Autentica</button>
-    <div id="login-error"></div>
+    <form id="login-form" autocomplete="on">
+      <div class="field"><label>Identificativo</label><input type="email" id="login-email" name="username" autocomplete="username" required></div>
+      <div class="field"><label>Chiave di accesso</label><input type="password" id="login-password" name="password" autocomplete="current-password" required></div>
+      <button class="btn" type="submit" id="btn-login">Autentica</button>
+      <div id="login-error"></div>
+    </form>
   </div>
+</div>
+
+<!-- ===== SIDEBAR OVERLAY ===== -->
+<div class="backdrop" id="backdrop"></div>
+<div id="sidebar">
+  <div class="scanline"></div>
+  <div class="nav-item active" data-view="home" data-text="Home">Home</div>
+  <div class="nav-item" data-view="contratti" data-text="Contratti telefonici">Contratti telefonici</div>
 </div>
 
 <!-- ===== APP ===== -->
 <div id="app" class="hidden">
   <div class="topbar">
+    <button class="hamburger" id="btn-hamburger"><span></span><span></span><span></span></button>
     <div class="orb" id="topbar-title">J.A.R.V.I.S.</div>
     <div class="right">
       <span class="email" id="user-email"></span>
       <span class="logout" id="btn-logout">Esci</span>
     </div>
   </div>
-  <div class="layout">
-    <div>
-      <div class="nav-item active" data-view="home">Home</div>
-      <div class="nav-item" data-view="contratti">Contratti telefonici</div>
-    </div>
-    <div>
-      <!-- HOME -->
-      <div id="view-home">
-        <div class="reactor">
-          <div class="ring r1"></div>
-          <div class="ring r2"></div>
-          <div class="ring r3"></div>
-          <div class="ring r4"></div>
-          <div class="core"></div>
-        </div>
-        <div class="welcome" id="welcome-text">bentornato</div>
-      </div>
 
-      <!-- CONTRATTI -->
-      <div id="view-contratti" class="hidden">
-        <div class="panel">
-          <div class="panel-head">
-            <div class="title">◈ contratti telefonici</div>
-            <div class="panel-actions">
-              <button class="btn small ghost" id="btn-gestisci-campi">Gestisci campi</button>
-              <button class="btn small" id="btn-nuovo-contratto">+ Nuovo contratto</button>
-            </div>
-          </div>
-          <div id="contratti-table-wrap">
-            <table id="contratti-table">
-              <thead><tr id="contratti-thead-row"></tr></thead>
-              <tbody id="contratti-tbody"></tbody>
-            </table>
-            <div id="contratti-empty" class="hidden">Nessun contratto salvato. Usa "+ Nuovo contratto" per iniziare.</div>
-          </div>
+  <!-- HOME -->
+  <div id="view-home">
+    <div class="side-widget datetime">
+      <div class="time" id="clock">--:--:--</div>
+      <div class="date" id="dateStr">—</div>
+    </div>
+
+    <div class="center-col">
+      <div class="core-anim" id="core-home"></div>
+      <div class="welcome" id="welcome-text">bentornato</div>
+    </div>
+
+    <div class="side-widget weather right">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#8fe8ff" stroke-width="1.4">
+        <circle cx="12" cy="12" r="5"/>
+        <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+        <line x1="4.2" y1="4.2" x2="5.6" y2="5.6"/><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"/>
+        <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+        <line x1="4.2" y1="19.8" x2="5.6" y2="18.4"/><line x1="18.4" y1="5.6" x2="19.8" y2="4.2"/>
+      </svg>
+      <div>
+        <div class="temp" id="weather-temp">—</div>
+        <div class="cond" id="weather-cond">Meteo non disponibile</div>
+        <div class="loc" id="weather-loc"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTRATTI -->
+  <div id="view-contratti" class="hidden">
+    <div class="panel">
+      <div class="panel-head">
+        <div class="title">◈ contratti telefonici</div>
+        <div class="panel-actions">
+          <button class="btn small ghost" id="btn-gestisci-campi">Gestisci campi</button>
+          <button class="btn small" id="btn-nuovo-contratto">+ Nuovo contratto</button>
         </div>
+      </div>
+      <div id="contratti-table-wrap">
+        <table id="contratti-table">
+          <thead><tr id="contratti-thead-row"></tr></thead>
+          <tbody id="contratti-tbody"></tbody>
+        </table>
+        <div id="contratti-empty" class="hidden">Nessun contratto salvato. Usa "+ Nuovo contratto" per iniziare.</div>
       </div>
     </div>
   </div>

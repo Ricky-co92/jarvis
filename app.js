@@ -27,9 +27,74 @@ const DEFAULT_CAMPI = [
   { chiave:"scadenza_finanziamento", etichetta:"Scadenza finanziamento", tipo:"data", ordine:19, mostra_in_tabella:false },
 ];
 
+// ---------- CORE ANIMATION (SVG generato via JS, riusato in login + home) ----------
+const CORE_SVG = `
+<svg viewBox="0 0 420 420">
+  <defs>
+    <radialGradient id="coreGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#eafcff"/>
+      <stop offset="30%" stop-color="#8fe8ff"/>
+      <stop offset="65%" stop-color="#2ab8d9" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#2ab8d9" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#0a2a38" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#0a2a38" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="210" cy="210" r="205" fill="url(#bgGlow)"/>
+  <g class="spin-1">
+    <circle cx="210" cy="210" r="196" fill="none" stroke="rgba(42,184,217,.25)" stroke-width="14"/>
+    <circle cx="210" cy="210" r="196" fill="none" stroke="rgba(143,232,255,.5)" stroke-width="1"/>
+    <circle cx="210" cy="210" r="182" fill="none" stroke="rgba(143,232,255,.5)" stroke-width="1"/>
+    <g class="core-ticks" stroke="#8fe8ff" stroke-width="2"></g>
+  </g>
+  <g class="spin-2">
+    <circle cx="210" cy="210" r="196" fill="none" stroke="#ffb020" stroke-width="10" stroke-dasharray="140 900" stroke-linecap="round" opacity="0.85"/>
+  </g>
+  <g class="spin-2"><g class="core-dots"></g></g>
+  <g class="spin-3">
+    <circle cx="210" cy="210" r="150" fill="none" stroke="#2ab8d9" stroke-width="4" stroke-dasharray="16 10" opacity="0.55"/>
+  </g>
+  <circle cx="210" cy="210" r="118" fill="none" stroke="rgba(143,232,255,.4)" stroke-width="1"/>
+  <circle cx="210" cy="210" r="112" fill="none" stroke="rgba(42,184,217,.25)" stroke-width="1"/>
+  <circle class="pulse" cx="210" cy="210" r="70" fill="url(#coreGrad)"/>
+  <circle cx="210" cy="210" r="24" fill="#eafcff" opacity="0.95"/>
+</svg>`;
+
+function renderCoreAnim(containerId){
+  const el = document.getElementById(containerId);
+  if(!el || el.dataset.rendered) return;
+  el.innerHTML = CORE_SVG;
+  el.dataset.rendered = "1";
+  const ticks = el.querySelector(".core-ticks");
+  for(let i=0;i<60;i++){
+    const angle=(i/60)*360, long=i%5===0;
+    const line=document.createElementNS("http://www.w3.org/2000/svg","line");
+    line.setAttribute("x1","210"); line.setAttribute("y1", long?"180":"189");
+    line.setAttribute("x2","210"); line.setAttribute("y2","203");
+    line.setAttribute("transform", `rotate(${angle} 210 210)`);
+    line.setAttribute("opacity", long?"0.9":"0.4");
+    ticks.appendChild(line);
+  }
+  const dots = el.querySelector(".core-dots");
+  [20,45,70,95].forEach((deg,i)=>{
+    const rad = deg * Math.PI/180;
+    const x = 210 + 196*Math.cos(rad - Math.PI/2);
+    const y = 210 + 196*Math.sin(rad - Math.PI/2);
+    const c = document.createElementNS("http://www.w3.org/2000/svg","circle");
+    c.setAttribute("cx",x); c.setAttribute("cy",y); c.setAttribute("r","4");
+    c.setAttribute("fill","#ffe28a"); c.setAttribute("class","dot");
+    c.style.animationDelay = (i*0.4)+"s";
+    dots.appendChild(c);
+  });
+}
+
 // ---------- INIT ----------
 window.addEventListener("DOMContentLoaded", async () => {
+  renderCoreAnim("core-login");
   bindStaticEvents();
+  startClock();
   const { data: { session } } = await sb.auth.getSession();
   if (session) await onLogin(session.user);
 });
@@ -41,10 +106,12 @@ if ("serviceWorker" in navigator) {
 }
 
 function bindStaticEvents(){
-  document.getElementById("btn-login").addEventListener("click", handleLoginOrSignup);
+  document.getElementById("login-form").addEventListener("submit", (e)=>{ e.preventDefault(); handleLoginOrSignup(); });
   document.getElementById("btn-logout").addEventListener("click", handleLogout);
+  document.getElementById("btn-hamburger").addEventListener("click", toggleMenu);
+  document.getElementById("backdrop").addEventListener("click", closeMenu);
   document.querySelectorAll(".nav-item").forEach(el=>{
-    el.addEventListener("click", ()=> switchView(el.dataset.view));
+    el.addEventListener("click", ()=> { switchView(el.dataset.view); closeMenu(); });
   });
   document.getElementById("btn-nuovo-contratto").addEventListener("click", ()=> openContrattoModal(null));
   document.getElementById("btn-gestisci-campi").addEventListener("click", openCampiModal);
@@ -55,6 +122,84 @@ function bindStaticEvents(){
   document.querySelectorAll(".modal-close").forEach(el=>{
     el.addEventListener("click", ()=> closeModal(el.dataset.close));
   });
+}
+
+// ---------- MENU (sidebar overlay con scan line + decode) ----------
+const GLITCH_CHARS = "!<>-_\\/[]{}—=+*^?#";
+function decodeEffect(el){
+  const target = el.dataset.text;
+  if(!target) return;
+  let iterations = 0;
+  clearInterval(el._interval);
+  el._interval = setInterval(()=>{
+    el.textContent = target.split("").map((ch,i)=>{
+      if(i < iterations) return target[i];
+      if(ch === " ") return " ";
+      return GLITCH_CHARS[Math.floor(Math.random()*GLITCH_CHARS.length)];
+    }).join("");
+    if(iterations >= target.length) clearInterval(el._interval);
+    iterations += 1/2;
+  }, 30);
+}
+function toggleMenu(){
+  const opening = !document.getElementById("sidebar").classList.contains("open");
+  document.getElementById("sidebar").classList.toggle("open", opening);
+  document.getElementById("backdrop").classList.toggle("open", opening);
+  document.getElementById("btn-hamburger").classList.toggle("open", opening);
+  if(opening){
+    document.querySelectorAll("#sidebar .nav-item[data-text]").forEach((el,i)=>{
+      setTimeout(()=> decodeEffect(el), 150 + i*130);
+    });
+  }
+}
+function closeMenu(){
+  document.getElementById("sidebar").classList.remove("open");
+  document.getElementById("backdrop").classList.remove("open");
+  document.getElementById("btn-hamburger").classList.remove("open");
+}
+
+// ---------- OROLOGIO ----------
+function startClock(){
+  function tick(){
+    const now = new Date();
+    const clockEl = document.getElementById("clock");
+    const dateEl = document.getElementById("dateStr");
+    if(clockEl) clockEl.textContent = now.toLocaleTimeString("it-IT");
+    if(dateEl) dateEl.textContent = now.toLocaleDateString("it-IT", {weekday:"long", day:"numeric", month:"long", year:"numeric"});
+  }
+  tick();
+  setInterval(tick, 1000);
+}
+
+// ---------- METEO (geolocalizzazione + Open-Meteo, nessuna API key) ----------
+const WEATHER_CODES = {
+  0:"Sereno",1:"Poco nuvoloso",2:"Parz. nuvoloso",3:"Nuvoloso",
+  45:"Nebbia",48:"Nebbia gelata",
+  51:"Pioviggine",53:"Pioviggine",55:"Pioviggine forte",
+  61:"Pioggia debole",63:"Pioggia",65:"Pioggia forte",
+  71:"Neve debole",73:"Neve",75:"Neve forte",
+  80:"Rovesci",81:"Rovesci",82:"Rovesci forti",
+  95:"Temporale",96:"Temporale",99:"Temporale forte"
+};
+async function loadWeather(){
+  if(!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(async (pos)=>{
+    const { latitude, longitude } = pos.coords;
+    try{
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code&timezone=auto`;
+      const res = await fetch(url);
+      const data = await res.json();
+      const temp = Math.round(data.current.temperature_2m);
+      const cond = WEATHER_CODES[data.current.weather_code] || "—";
+      document.getElementById("weather-temp").textContent = temp + "°C";
+      document.getElementById("weather-cond").textContent = cond;
+      const geoUrl = `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${latitude}&longitude=${longitude}&language=it`;
+      const geoRes = await fetch(geoUrl);
+      const geoData = await geoRes.json();
+      const city = geoData.results && geoData.results[0] ? geoData.results[0].name : "";
+      if(city) document.getElementById("weather-loc").textContent = city;
+    }catch(e){ console.warn("Meteo non disponibile", e); }
+  }, ()=>{ console.warn("Geolocalizzazione negata"); });
 }
 
 async function handleLoginOrSignup(){
@@ -82,6 +227,8 @@ async function onLogin(user){
   document.getElementById("app").classList.remove("hidden");
   document.getElementById("user-email").textContent = user.email;
   document.getElementById("welcome-text").textContent = "bentornato, " + user.email.split("@")[0];
+  renderCoreAnim("core-home");
+  loadWeather();
   await ensureCampi();
   await loadContratti();
   switchView("home");
