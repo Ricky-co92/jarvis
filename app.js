@@ -34,6 +34,12 @@ window.addEventListener("DOMContentLoaded", async () => {
   if (session) await onLogin(session.user);
 });
 
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch((err) => console.warn("SW non registrato:", err));
+  });
+}
+
 function bindStaticEvents(){
   document.getElementById("btn-login").addEventListener("click", handleLoginOrSignup);
   document.getElementById("btn-logout").addEventListener("click", handleLogout);
