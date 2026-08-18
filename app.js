@@ -74,6 +74,15 @@ const DEFAULT_CAMPI_ACCESSI = [
   { chiave:"note",     etichetta:"Note",      tipo:"testo",     ordine:4, mostra_in_tabella:false },
 ];
 
+const DEFAULT_CAMPI_CONTATTI = [
+  { chiave:"nome",       etichetta:"Nome",       tipo:"testo", ordine:0, mostra_in_tabella:true },
+  { chiave:"cognome",    etichetta:"Cognome",    tipo:"testo", ordine:1, mostra_in_tabella:true },
+  { chiave:"compleanno", etichetta:"Compleanno", tipo:"data",  ordine:2, mostra_in_tabella:true },
+  { chiave:"telefono",   etichetta:"Telefono",   tipo:"testo", ordine:3, mostra_in_tabella:false },
+  { chiave:"email",      etichetta:"Email",      tipo:"testo", ordine:4, mostra_in_tabella:false },
+  { chiave:"note",       etichetta:"Note",       tipo:"testo", ordine:5, mostra_in_tabella:false },
+];
+
 // ---------- REGISTRO SEZIONI (tabella dinamica generica) ----------
 const SECTIONS = {
   contratti: {
@@ -100,6 +109,11 @@ const SECTIONS = {
   accessi: {
     table: "accessi", camposTable: "accessi_campi",
     defaultCampi: DEFAULT_CAMPI_ACCESSI,
+    campi: [], records: []
+  },
+  contatti: {
+    table: "anagrafica_contatti", camposTable: "contatti_campi",
+    defaultCampi: DEFAULT_CAMPI_CONTATTI, birthdayField: "compleanno",
     campi: [], records: []
   }
 };
@@ -253,8 +267,11 @@ function bindStaticEvents(){
   document.getElementById("btn-gestisci-campi-documenti").addEventListener("click", ()=> openCampiModal("documenti"));
   document.getElementById("btn-nuovo-accesso").addEventListener("click", ()=> openRecordModal("accessi", null));
   document.getElementById("btn-gestisci-campi-accessi").addEventListener("click", ()=> openCampiModal("accessi"));
+  document.getElementById("btn-nuovo-contatto").addEventListener("click", ()=> openRecordModal("contatti", null));
+  document.getElementById("btn-gestisci-campi-contatti").addEventListener("click", ()=> openCampiModal("contatti"));
   document.getElementById("mod-weather").addEventListener("click", openWeatherModal);
   document.getElementById("mod-time").addEventListener("click", openTempoModal);
+  document.querySelector("[data-close-birthday]").addEventListener("click", closeBirthdayPopup);
 
   document.getElementById("btn-salva-contratto").addEventListener("click", saveRecord);
   document.getElementById("btn-elimina-contratto").addEventListener("click", deleteRecord);
@@ -570,7 +587,32 @@ async function onLogin(user){
     await ensureCampi(section);
     await loadRecords(section);
   }
+  checkBirthdaysToday();
   switchView("home");
+}
+
+// ---------- POPUP COMPLEANNI ----------
+function checkBirthdaysToday(){
+  const cfg = SECTIONS.contatti;
+  if(!cfg || !cfg.birthdayField) return;
+  const now = new Date();
+  const todayNames = cfg.records
+    .filter(r => {
+      const val = r.dati[cfg.birthdayField];
+      if(!val) return false;
+      const d = new Date(val);
+      if(isNaN(d)) return false;
+      return d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+    })
+    .map(r => [r.dati.nome, r.dati.cognome].filter(Boolean).join(" ") || "Contatto senza nome");
+
+  if(todayNames.length === 0) return;
+  document.getElementById("birthday-names").innerHTML = todayNames.map(n=>`🎉 ${escapeHtml(n)}`).join("<br>");
+  document.getElementById("birthday-popup").classList.add("show");
+}
+
+function closeBirthdayPopup(){
+  document.getElementById("birthday-popup").classList.remove("show");
 }
 
 // ---------- NAV ----------
@@ -579,7 +621,7 @@ function switchView(view){
     el.classList.toggle("active", el.dataset.view === view);
   });
   document.getElementById("view-home").classList.toggle("hidden", view!=="home");
-  ["contratti","abbonamenti","veicoli","documenti","accessi"].forEach(v=>{
+  ["contratti","abbonamenti","veicoli","documenti","accessi","contatti"].forEach(v=>{
     document.getElementById("view-"+v).classList.toggle("hidden", view!==v);
   });
   if(SECTIONS[view]) renderTable(view);
