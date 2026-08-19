@@ -240,6 +240,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   renderHexTicks("mod-compleanni-ticks");
   bindStaticEvents();
   startClock();
+  if("speechSynthesis" in window){ window.speechSynthesis.getVoices(); } // pre-carica le voci per evitare ritardi al login
   const { data: { session } } = await sb.auth.getSession();
   if (session) await onLogin(session.user);
 });
@@ -518,14 +519,14 @@ async function handleLoginOrSignup(){
   if(error){ errEl.textContent = "Credenziali non valide."; return; }
   const displayName = (data.user.user_metadata && (data.user.user_metadata.full_name || data.user.user_metadata.name))
     || data.user.email.split("@")[0];
-  await playLoginTransition(displayName);
+  await playLoginTransition(displayName, data.user.email);
   await onLogin(data.user);
 }
 
 // ---------- TRANSIZIONE DI ACCESSO ----------
 function wait(ms){ return new Promise(r => setTimeout(r, ms)); }
 
-async function playLoginTransition(displayName){
+async function playLoginTransition(displayName, email){
   const core = document.getElementById("core-login");
   const loginBox = document.getElementById("login");
   const label = document.getElementById("transition-label");
@@ -533,7 +534,7 @@ async function playLoginTransition(displayName){
   const accentArc = core.querySelector('circle[stroke="#ffb020"]');
 
   loginBox.classList.add("fading");
-  if(displayName) speakWelcome(displayName);
+  playWelcome(displayName, email);
 
   core.classList.add("assembling");
   await wait(30);
@@ -585,7 +586,22 @@ async function handleLogout(){
   document.getElementById("screen-login").classList.remove("hidden");
 }
 
-// ---------- BENVENUTO VOCALE (sintesi vocale del browser) ----------
+// ---------- BENVENUTO VOCALE ----------
+// Traccia audio personalizzata per utente (email -> file). Chi non è in mappa usa la sintesi vocale di riserva.
+const VOICE_FILES = {
+  "riccardo@costariccardo.com": "welcome_riccardo.mp3"
+};
+
+function playWelcome(displayName, email){
+  const file = VOICE_FILES[email];
+  if(file){
+    const audio = new Audio(file);
+    audio.play().catch(err => console.warn("Audio non riprodotto:", err));
+  } else if(displayName){
+    speakWelcome(displayName);
+  }
+}
+
 function getBestItalianMaleVoice(){
   const voices = window.speechSynthesis.getVoices();
   const italiane = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith("it"));
