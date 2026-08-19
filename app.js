@@ -44,7 +44,7 @@ const DEFAULT_CAMPI_ABBONAMENTI = [
   { chiave:"periodicita", etichetta:"Periodicità",    tipo:"periodicita", ordine:2, mostra_in_tabella:true },
   { chiave:"mdp",         etichetta:"Come lo pago",   tipo:"testo",       ordine:3, mostra_in_tabella:true },
   { chiave:"note",        etichetta:"Note",           tipo:"testo",       ordine:4, mostra_in_tabella:false },
-  { chiave:"rinnovo",     etichetta:"Rinnovo",        tipo:"data",        ordine:5, mostra_in_tabella:false },
+  { chiave:"rinnovo",     etichetta:"Rinnovo",        tipo:"rinnovo",     ordine:5, mostra_in_tabella:true },
 ];
 
 const DEFAULT_CAMPI_VEICOLI = [
@@ -94,7 +94,7 @@ const SECTIONS = {
   abbonamenti: {
     table: "abbonamenti", camposTable: "abbonamenti_campi",
     defaultCampi: DEFAULT_CAMPI_ABBONAMENTI, totalField: "costo",
-    periodicityField: "periodicita",
+    periodicityField: "periodicita", rinnovoField: "rinnovo",
     campi: [], records: []
   },
   veicoli: {
@@ -705,6 +705,16 @@ async function ensureCampi(section){
     }).select();
     if(!addErr && added) cfg.campi.push(added[0]);
   }
+
+  // migrazione: campo "rinnovo" da data fissa a giorno/mese ricorrente
+  if(cfg.rinnovoField){
+    const rinnovoCampo = cfg.campi.find(c=>c.chiave===cfg.rinnovoField);
+    if(rinnovoCampo && rinnovoCampo.tipo !== "rinnovo"){
+      await sb.from(cfg.camposTable).update({ tipo:"rinnovo" }).eq("id", rinnovoCampo.id);
+      rinnovoCampo.tipo = "rinnovo";
+      cfg._migrateRinnovoValues = true;
+    }
+  }
 }
 
 async function loadRecords(section){
@@ -712,6 +722,23 @@ async function loadRecords(section){
   const { data, error } = await sb.from(cfg.table).select("*").order("created_at", { ascending:false });
   if(error){ console.error(error); return; }
   cfg.records = data;
+
+  // migrazione valori: converte le vecchie date fisse del campo rinnovo nel nuovo formato giorno/mese
+  if(cfg._migrateRinnovoValues && cfg.rinnovoField){
+    for(const r of cfg.records){
+      const val = r.dati[cfg.rinnovoField];
+      if(val && /^\d{4}-\d{2}-\d{2}$/.test(val)){
+        const d = new Date(val);
+        const isAnnuale = r.dati[cfg.periodicityField] === "annuale";
+        const nuovoValore = isAnnuale
+          ? String(d.getDate()).padStart(2,"0") + "-" + String(d.getMonth()+1).padStart(2,"0")
+          : String(d.getDate()).padStart(2,"0");
+        r.dati[cfg.rinnovoField] = nuovoValore;
+        await sb.from(cfg.table).update({ dati: r.dati }).eq("id", r.id);
+      }
+    }
+    cfg._migrateRinnovoValues = false;
+  }
 }
 
 function updateTotal(section){
@@ -748,10 +775,18 @@ function renderTable(section){
   tbody.innerHTML = cfg.records.map(row=>{
     const cells = visibili.map(c=>{
       let raw;
+      let dateForBadge = null;
       if(cfg.computedField && c.chiave === cfg.computedField.chiave){
         raw = formatValue(computeFieldValue(cfg, row.dati).toFixed(2), "euro");
+      } else if(cfg.rinnovoField && c.chiave === cfg.rinnovoField){
+        const periodicitaVal = cfg.periodicityField ? row.dati[cfg.periodicityField] : null;
+        raw = formatRinnovo(row.dati[c.chiave], periodicitaVal);
+        dateForBadge = nextRinnovoDate(row.dati[c.chiave], periodicitaVal);
       } else {
         raw = formatValue(row.dati[c.chiave], c.tipo);
+      }
+      if(dateForBadge){
+        return `<td><span class="${dateStatusClassFromDate(dateForBadge)}">${raw}</span></td>`;
       }
       if(c.tipo==="data" && row.dati[c.chiave]){
         return `<td><span class="${dateStatusClass(row.dati[c.chiave])}">${raw}</span></td>`;
@@ -809,6 +844,10 @@ function exportSectionPDF(section){
       if(cfg.computedField && c.chiave === cfg.computedField.chiave){
         return "€ " + computeFieldValue(cfg, r.dati).toFixed(2);
       }
+      if(cfg.rinnovoField && c.chiave === cfg.rinnovoField){
+        const periodicitaVal = cfg.periodicityField ? r.dati[cfg.periodicityField] : null;
+        return formatRinnovo(r.dati[c.chiave], periodicitaVal);
+      }
       const v = exportFormatValue(r.dati[c.chiave], c.tipo);
       return v || "—";
     })
@@ -837,10 +876,47 @@ function dateStatusClass(dateStr){
   if(!dateStr) return "";
   const d = new Date(dateStr);
   if(isNaN(d)) return "";
+  return dateStatusClassFromDate(d);
+}
+
+function dateStatusClassFromDate(d){
+  if(!d) return "";
   const diffDays = Math.floor((d - new Date()) / 86400000);
   if(diffDays < 0) return "date-expired";
   if(diffDays <= 30) return "date-soon";
   return "";
+}
+
+const MONTH_NAMES_SHORT = ["gen","feb","mar","apr","mag","giu","lug","ago","set","ott","nov","dic"];
+
+function formatRinnovo(val, periodicitaVal){
+  if(!val) return "\u2014";
+  if(periodicitaVal === "annuale"){
+    const [dd,mm] = val.split("-");
+    const mi = parseInt(mm,10) - 1;
+    return `${parseInt(dd,10)} ${MONTH_NAMES_SHORT[mi] || ""}`;
+  }
+  return `Il ${parseInt(val,10)} di ogni mese`;
+}
+
+function nextRinnovoDate(val, periodicitaVal){
+  if(!val) return null;
+  const now = new Date();
+  const todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let day, month;
+  if(periodicitaVal === "annuale"){
+    const [dd,mm] = val.split("-").map(Number);
+    day = dd; month = mm - 1;
+  } else {
+    day = parseInt(val,10); month = now.getMonth();
+  }
+  let next = new Date(now.getFullYear(), month, day);
+  if(next < todayMid){
+    next = periodicitaVal === "annuale"
+      ? new Date(now.getFullYear()+1, month, day)
+      : new Date(now.getFullYear(), now.getMonth()+1, day);
+  }
+  return next;
 }
 
 function escapeHtml(str){
@@ -881,12 +957,43 @@ function openRecordModal(section, record){
       return `<div class="field"><label>${escapeHtml(c.etichetta)} (calcolato automaticamente)</label>
         <input type="text" id="computed-${c.chiave}" value="€ ${computed}" disabled style="opacity:.7;"></div>`;
     }
+    if(cfg.rinnovoField && c.chiave === cfg.rinnovoField){
+      let giorno = "", mese = "";
+      if(val){
+        if(String(val).includes("-")){ const [dd,mm]=String(val).split("-"); giorno=dd; mese=mm; }
+        else { giorno = String(val).padStart(2,"0"); }
+      }
+      const giornoOpts = Array.from({length:31},(_,i)=>String(i+1).padStart(2,"0"))
+        .map(d=>`<option value="${d}"${d===giorno?" selected":""}>${parseInt(d,10)}</option>`).join("");
+      const meseOpts = MONTH_NAMES_SHORT.map((m,i)=>{
+        const mm = String(i+1).padStart(2,"0");
+        return `<option value="${mm}"${mm===mese?" selected":""}>${m}</option>`;
+      }).join("");
+      return `<div class="field"><label>${escapeHtml(c.etichetta)}</label>
+        <div style="display:flex;gap:8px;">
+          <select id="rinnovo-giorno">${giornoOpts}</select>
+          <select id="rinnovo-mese" style="display:none;">${meseOpts}</select>
+        </div></div>`;
+    }
     const inputType = c.tipo==="data" ? "date" : (c.tipo==="numero"||c.tipo==="euro" ? "number" : "text");
     const step = c.tipo==="euro" ? ' step="0.01"' : "";
     return `<div class="field"><label>${escapeHtml(c.etichetta)}</label>
       <input type="${inputType}"${step} data-chiave="${c.chiave}" value="${escapeHtml(String(val))}"></div>`;
   }).join("");
   document.getElementById("modal-contratto").classList.remove("hidden");
+
+  // mostra/nasconde il selettore mese in base alla periodicità
+  if(cfg.rinnovoField && cfg.periodicityField){
+    const periodicitaSelect = wrap.querySelector(`[data-chiave="${cfg.periodicityField}"]`);
+    const meseSelect = document.getElementById("rinnovo-mese");
+    if(periodicitaSelect && meseSelect){
+      const syncMeseVisibility = ()=>{
+        meseSelect.style.display = periodicitaSelect.value === "annuale" ? "inline-block" : "none";
+      };
+      syncMeseVisibility();
+      periodicitaSelect.addEventListener("change", syncMeseVisibility);
+    }
+  }
 
   // aggiorna dal vivo il campo calcolato mentre si digita
   if(cfg.computedField){
@@ -918,6 +1025,14 @@ async function saveRecord(){
   });
   if(cfg.computedField){
     dati[cfg.computedField.chiave] = computeFieldValue(cfg, dati).toFixed(2);
+  }
+  if(cfg.rinnovoField){
+    const giornoEl = document.getElementById("rinnovo-giorno");
+    const meseEl = document.getElementById("rinnovo-mese");
+    if(giornoEl){
+      const isAnnuale = cfg.periodicityField && dati[cfg.periodicityField] === "annuale";
+      dati[cfg.rinnovoField] = isAnnuale ? `${giornoEl.value}-${meseEl.value}` : giornoEl.value;
+    }
   }
   if(editingId){
     const { error } = await sb.from(cfg.table).update({ dati }).eq("id", editingId);
@@ -968,6 +1083,7 @@ function buildCampoRow(campo){
       <option value="data"${campo.tipo==="data"?" selected":""}>Data</option>
       <option value="periodicita"${campo.tipo==="periodicita"?" selected":""}>Periodicità (mensile/annuale)</option>
       <option value="password"${campo.tipo==="password"?" selected":""}>Password (mascherata)</option>
+      <option value="rinnovo"${campo.tipo==="rinnovo"?" selected":""}>Rinnovo (giorno/mese ricorrente)</option>
     </select>
     <label class="chk"><input type="checkbox" class="campo-mostra"${campo.mostra_in_tabella?" checked":""}> in tabella</label>
     <span class="campo-del">✕</span>
