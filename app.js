@@ -516,14 +516,16 @@ async function handleLoginOrSignup(){
 
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
   if(error){ errEl.textContent = "Credenziali non valide."; return; }
-  await playLoginTransition();
+  const displayName = (data.user.user_metadata && (data.user.user_metadata.full_name || data.user.user_metadata.name))
+    || data.user.email.split("@")[0];
+  await playLoginTransition(displayName);
   await onLogin(data.user);
 }
 
 // ---------- TRANSIZIONE DI ACCESSO ----------
 function wait(ms){ return new Promise(r => setTimeout(r, ms)); }
 
-async function playLoginTransition(){
+async function playLoginTransition(displayName){
   const core = document.getElementById("core-login");
   const loginBox = document.getElementById("login");
   const label = document.getElementById("transition-label");
@@ -531,6 +533,7 @@ async function playLoginTransition(){
   const accentArc = core.querySelector('circle[stroke="#ffb020"]');
 
   loginBox.classList.add("fading");
+  if(displayName) speakWelcome(displayName);
 
   core.classList.add("assembling");
   await wait(30);
@@ -583,12 +586,16 @@ async function handleLogout(){
 }
 
 // ---------- BENVENUTO VOCALE (sintesi vocale del browser) ----------
-function getBestItalianVoice(){
+function getBestItalianMaleVoice(){
   const voices = window.speechSynthesis.getVoices();
   const italiane = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith("it"));
   if(italiane.length === 0) return null;
-  const preferite = italiane.find(v => /google|natural|premium/i.test(v.name));
-  return preferite || italiane[0];
+  // nomi di voci maschili italiane note sui vari sistemi (iOS: Luca, altri sistemi: Diego/Marco ecc.)
+  const nomiMaschili = /luca|diego|marco|paolo|alessandro|matteo|male|uomo/i;
+  const maschile = italiane.find(v => nomiMaschili.test(v.name));
+  if(maschile) return maschile;
+  const buona = italiane.find(v => /google|natural|premium/i.test(v.name));
+  return buona || italiane[0];
 }
 
 function speakWelcome(name){
@@ -596,11 +603,11 @@ function speakWelcome(name){
   const say = ()=>{
     window.speechSynthesis.cancel();
     const utter = new SpeechSynthesisUtterance(`Bentornato, ${name}. Sistemi online.`);
-    const voice = getBestItalianVoice();
+    const voice = getBestItalianMaleVoice();
     if(voice) utter.voice = voice;
     utter.lang = "it-IT";
-    utter.rate = 0.95;
-    utter.pitch = 0.85;
+    utter.rate = 0.88;
+    utter.pitch = 0.75;
     window.speechSynthesis.speak(utter);
   };
   if(window.speechSynthesis.getVoices().length === 0){
@@ -617,7 +624,6 @@ async function onLogin(user){
     || user.email.split("@")[0];
   document.getElementById("user-name").textContent = displayName;
   document.getElementById("welcome-text").textContent = "bentornato, " + displayName;
-  speakWelcome(displayName);
   renderCoreAnim("core-home");
   loadWeather();
   for(const section of Object.keys(SECTIONS)){
