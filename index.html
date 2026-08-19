@@ -14,6 +14,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{ font-size:17px; }
@@ -347,6 +349,7 @@
         <div class="title">◈ contratti telefonici</div>
         <div class="total-badge">Totale mensile <span class="amount" id="contratti-total-value">€ 0.00</span></div>
         <div class="panel-actions">
+          <button class="btn small ghost" id="btn-export-contratti">Esporta PDF</button>
           <button class="btn small ghost" id="btn-gestisci-campi">Gestisci campi</button>
           <button class="btn small" id="btn-nuovo-contratto">+ Nuovo contratto</button>
         </div>
@@ -368,6 +371,7 @@
         <div class="title">◈ abbonamenti</div>
         <div class="total-badge">Totale mensile <span class="amount" id="abbonamenti-total-value">€ 0.00</span></div>
         <div class="panel-actions">
+          <button class="btn small ghost" id="btn-export-abbonamenti">Esporta PDF</button>
           <button class="btn small ghost" id="btn-gestisci-campi-abbonamenti">Gestisci campi</button>
           <button class="btn small" id="btn-nuovo-abbonamento">+ Nuovo abbonamento</button>
         </div>
@@ -388,6 +392,7 @@
       <div class="panel-head">
         <div class="title">◈ veicoli</div>
         <div class="panel-actions">
+          <button class="btn small ghost" id="btn-export-veicoli">Esporta PDF</button>
           <button class="btn small ghost" id="btn-gestisci-campi-veicoli">Gestisci campi</button>
           <button class="btn small" id="btn-nuovo-veicolo">+ Nuovo veicolo</button>
         </div>
@@ -408,6 +413,7 @@
       <div class="panel-head">
         <div class="title">◈ documenti</div>
         <div class="panel-actions">
+          <button class="btn small ghost" id="btn-export-documenti">Esporta PDF</button>
           <button class="btn small ghost" id="btn-gestisci-campi-documenti">Gestisci campi</button>
           <button class="btn small" id="btn-nuovo-documento">+ Nuovo documento</button>
         </div>
@@ -428,6 +434,7 @@
       <div class="panel-head">
         <div class="title">◈ accessi</div>
         <div class="panel-actions">
+          <button class="btn small ghost" id="btn-export-accessi">Esporta PDF</button>
           <button class="btn small ghost" id="btn-gestisci-campi-accessi">Gestisci campi</button>
           <button class="btn small" id="btn-nuovo-accesso">+ Nuovo accesso</button>
         </div>
@@ -448,6 +455,7 @@
       <div class="panel-head">
         <div class="title">◈ contatti</div>
         <div class="panel-actions">
+          <button class="btn small ghost" id="btn-export-contatti">Esporta PDF</button>
           <button class="btn small ghost" id="btn-gestisci-campi-contatti">Gestisci campi</button>
           <button class="btn small" id="btn-nuovo-contatto">+ Nuovo contatto</button>
         </div>

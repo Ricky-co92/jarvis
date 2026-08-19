@@ -88,6 +88,7 @@ const SECTIONS = {
   contratti: {
     table: "contratti", camposTable: "contratti_campi",
     defaultCampi: DEFAULT_CAMPI_CONTRATTI, totalField: "totale",
+    computedField: { chiave: "totale", sources: ["canone","finanzia"] },
     campi: [], records: []
   },
   abbonamenti: {
@@ -274,6 +275,11 @@ function bindStaticEvents(){
   document.getElementById("mod-time").addEventListener("click", openTempoModal);
   document.querySelector("[data-close-birthday]").addEventListener("click", closeBirthdayPopup);
   document.getElementById("mod-compleanni").addEventListener("click", openUpcomingBirthdaysModal);
+
+  Object.keys(SECTIONS).forEach(section=>{
+    const btn = document.getElementById("btn-export-" + section);
+    if(btn) btn.addEventListener("click", ()=> exportSectionPDF(section));
+  });
 
   document.getElementById("btn-salva-contratto").addEventListener("click", saveRecord);
   document.getElementById("btn-elimina-contratto").addEventListener("click", deleteRecord);
@@ -711,7 +717,12 @@ async function loadRecords(section){
 function updateTotal(section){
   const cfg = SECTIONS[section];
   const sum = cfg.records.reduce((acc, r) => {
-    const v = parseFloat(r.dati[cfg.totalField]);
+    let v;
+    if(cfg.computedField && cfg.totalField === cfg.computedField.chiave){
+      v = computeFieldValue(cfg, r.dati);
+    } else {
+      v = parseFloat(r.dati[cfg.totalField]);
+    }
     if(isNaN(v)) return acc;
     const isAnnuale = cfg.periodicityField && r.dati[cfg.periodicityField] === "annuale";
     return acc + (isAnnuale ? v/12 : v);
@@ -736,7 +747,12 @@ function renderTable(section){
   emptyEl.classList.add("hidden");
   tbody.innerHTML = cfg.records.map(row=>{
     const cells = visibili.map(c=>{
-      const raw = formatValue(row.dati[c.chiave], c.tipo);
+      let raw;
+      if(cfg.computedField && c.chiave === cfg.computedField.chiave){
+        raw = formatValue(computeFieldValue(cfg, row.dati).toFixed(2), "euro");
+      } else {
+        raw = formatValue(row.dati[c.chiave], c.tipo);
+      }
       if(c.tipo==="data" && row.dati[c.chiave]){
         return `<td><span class="${dateStatusClass(row.dati[c.chiave])}">${raw}</span></td>`;
       }
@@ -759,6 +775,62 @@ function formatValue(val, tipo){
   if(tipo==="periodicita") return val==="annuale" ? "Annuale" : "Mensile";
   if(tipo==="password") return "••••••••";
   return escapeHtml(String(val));
+}
+
+function computeFieldValue(cfg, dati){
+  if(!cfg.computedField) return null;
+  return cfg.computedField.sources.reduce((acc,k)=> acc + (parseFloat(dati[k])||0), 0);
+}
+
+// ---------- ESPORTAZIONE PDF ----------
+const SECTION_TITLES = {
+  contratti:"Contratti telefonici", abbonamenti:"Abbonamenti", veicoli:"Veicoli",
+  documenti:"Documenti", accessi:"Accessi", contatti:"Contatti"
+};
+
+function exportFormatValue(val, tipo){
+  if(val===undefined || val===null || val==="") return "";
+  if(tipo==="euro") return "€ " + Number(val).toFixed(2);
+  if(tipo==="periodicita") return val==="annuale" ? "Annuale" : "Mensile";
+  if(tipo==="password") return "••••••••";
+  return String(val);
+}
+
+function exportSectionPDF(section){
+  const cfg = SECTIONS[section];
+  if(!cfg || cfg.records.length === 0){ alert("Nessun dato da esportare in questa sezione."); return; }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: "landscape", unit: "pt" });
+  const ordinati = [...cfg.campi].sort((a,b)=>a.ordine-b.ordine);
+  const head = [ordinati.map(c=>c.etichetta)];
+  const body = cfg.records.map(r=>
+    ordinati.map(c=>{
+      if(cfg.computedField && c.chiave === cfg.computedField.chiave){
+        return "€ " + computeFieldValue(cfg, r.dati).toFixed(2);
+      }
+      const v = exportFormatValue(r.dati[c.chiave], c.tipo);
+      return v || "—";
+    })
+  );
+
+  const title = SECTION_TITLES[section] || section;
+  doc.setFontSize(14);
+  doc.text(`J.A.R.V.I.S. — ${title}`, 40, 40);
+  doc.setFontSize(9);
+  doc.setTextColor(120);
+  doc.text(`Esportato il ${new Date().toLocaleString("it-IT")} — ${cfg.records.length} record`, 40, 56);
+
+  doc.autoTable({
+    head, body,
+    startY: 70,
+    styles: { fontSize: 8, cellPadding: 4, overflow: "linebreak" },
+    headStyles: { fillColor: [10, 30, 42], textColor: [255,255,255] },
+    alternateRowStyles: { fillColor: [240,248,250] },
+    margin: { left: 40, right: 40 }
+  });
+
+  doc.save(`${section}_${new Date().toISOString().slice(0,10)}.pdf`);
 }
 
 function dateStatusClass(dateStr){
@@ -804,12 +876,37 @@ function openRecordModal(section, record){
         <input type="password" data-chiave="${c.chiave}" value="${escapeHtml(String(val))}" class="pw-input">
         <span class="pw-toggle" onclick="const i=this.previousElementSibling; i.type = i.type==='password' ? 'text' : 'password'; this.textContent = i.type==='password' ? 'mostra' : 'nascondi';">mostra</span></div>`;
     }
+    if(cfg.computedField && c.chiave === cfg.computedField.chiave){
+      const computed = record ? computeFieldValue(cfg, record.dati).toFixed(2) : "0.00";
+      return `<div class="field"><label>${escapeHtml(c.etichetta)} (calcolato automaticamente)</label>
+        <input type="text" id="computed-${c.chiave}" value="€ ${computed}" disabled style="opacity:.7;"></div>`;
+    }
     const inputType = c.tipo==="data" ? "date" : (c.tipo==="numero"||c.tipo==="euro" ? "number" : "text");
     const step = c.tipo==="euro" ? ' step="0.01"' : "";
     return `<div class="field"><label>${escapeHtml(c.etichetta)}</label>
       <input type="${inputType}"${step} data-chiave="${c.chiave}" value="${escapeHtml(String(val))}"></div>`;
   }).join("");
   document.getElementById("modal-contratto").classList.remove("hidden");
+
+  // aggiorna dal vivo il campo calcolato mentre si digita
+  if(cfg.computedField){
+    const computedEl = document.getElementById("computed-" + cfg.computedField.chiave);
+    if(computedEl){
+      cfg.computedField.sources.forEach(key=>{
+        const input = wrap.querySelector(`[data-chiave="${key}"]`);
+        if(input){
+          input.addEventListener("input", ()=>{
+            const dati = {};
+            cfg.computedField.sources.forEach(k=>{
+              const inp = wrap.querySelector(`[data-chiave="${k}"]`);
+              dati[k] = inp ? inp.value : "";
+            });
+            computedEl.value = "€ " + computeFieldValue(cfg, dati).toFixed(2);
+          });
+        }
+      });
+    }
+  }
 }
 
 async function saveRecord(){
@@ -817,8 +914,11 @@ async function saveRecord(){
   const inputs = document.querySelectorAll("#modal-contratto-fields input, #modal-contratto-fields select");
   const dati = {};
   inputs.forEach(inp=>{
-    if(inp.value !== "") dati[inp.dataset.chiave] = inp.value;
+    if(inp.dataset.chiave && inp.value !== "") dati[inp.dataset.chiave] = inp.value;
   });
+  if(cfg.computedField){
+    dati[cfg.computedField.chiave] = computeFieldValue(cfg, dati).toFixed(2);
+  }
   if(editingId){
     const { error } = await sb.from(cfg.table).update({ dati }).eq("id", editingId);
     if(error){ alert("Errore salvataggio: " + error.message); return; }
