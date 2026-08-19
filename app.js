@@ -582,6 +582,34 @@ async function handleLogout(){
   document.getElementById("screen-login").classList.remove("hidden");
 }
 
+// ---------- BENVENUTO VOCALE (sintesi vocale del browser) ----------
+function getBestItalianVoice(){
+  const voices = window.speechSynthesis.getVoices();
+  const italiane = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith("it"));
+  if(italiane.length === 0) return null;
+  const preferite = italiane.find(v => /google|natural|premium/i.test(v.name));
+  return preferite || italiane[0];
+}
+
+function speakWelcome(name){
+  if(!("speechSynthesis" in window)) return;
+  const say = ()=>{
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(`Bentornato, ${name}. Sistemi online.`);
+    const voice = getBestItalianVoice();
+    if(voice) utter.voice = voice;
+    utter.lang = "it-IT";
+    utter.rate = 0.95;
+    utter.pitch = 0.85;
+    window.speechSynthesis.speak(utter);
+  };
+  if(window.speechSynthesis.getVoices().length === 0){
+    window.speechSynthesis.addEventListener("voiceschanged", say, { once:true });
+  } else {
+    say();
+  }
+}
+
 async function onLogin(user){
   currentUser = user;
   sessionStart = new Date();
@@ -589,6 +617,7 @@ async function onLogin(user){
     || user.email.split("@")[0];
   document.getElementById("user-name").textContent = displayName;
   document.getElementById("welcome-text").textContent = "bentornato, " + displayName;
+  speakWelcome(displayName);
   renderCoreAnim("core-home");
   loadWeather();
   for(const section of Object.keys(SECTIONS)){
