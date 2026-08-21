@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  :root{ font-size:17px; }
+  :root{ font-size:18px; }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
   html,body{height:100%;}
   body{
@@ -132,18 +132,18 @@
   .nav-item.active::before{content:'';position:absolute;left:12px;top:50%;transform:translateY(-50%);width:5px;height:5px;border-radius:50%;background:#8fe8ff;box-shadow:0 0 6px #8fe8ff;}
 
   /* ============ HOME ============ */
-  #view-home{flex:1;display:flex;align-items:center;justify-content:center;gap:50px;min-height:calc(100vh - 120px);min-height:calc(100dvh - 120px);flex-wrap:wrap;}
+  #view-home{flex:1;display:flex;align-items:center;justify-content:center;gap:70px;min-height:calc(100vh - 120px);min-height:calc(100dvh - 120px);flex-wrap:wrap;}
   .side-mods{display:flex;flex-direction:column;gap:24px;}
   .center-col{display:flex;flex-direction:column;align-items:center;}
-  .center-col .core-anim{width:min(30vw,320px);height:min(30vw,320px);aspect-ratio:1/1;}
+  .center-col .core-anim{width:min(38vw,440px);height:min(38vw,440px);aspect-ratio:1/1;}
   .welcome{margin-top:24px;font-size:1rem;letter-spacing:0.3px;color:#8fb8cc;text-transform:uppercase;}
 
   /* modulo hex-gauge (ora/data/meteo) */
   .hex-mod{
-    width:150px;aspect-ratio:1/1;position:relative;
+    width:215px;aspect-ratio:1/1;position:relative;
     background:radial-gradient(circle at 50% 42%, rgba(143,232,255,.12), transparent 60%), linear-gradient(160deg, rgba(42,184,217,.1), rgba(4,14,20,.7));
-    clip-path:polygon(24px 0, 100% 0, 100% calc(100% - 24px), calc(100% - 24px) 100%, 0 100%, 0 24px);
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+    clip-path:polygon(30px 0, 100% 0, 100% calc(100% - 30px), calc(100% - 30px) 100%, 0 100%, 0 30px);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
     backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
     animation:hexGlow 5s ease-in-out infinite;
     overflow:hidden;flex-shrink:0;
@@ -154,18 +154,18 @@
     content:'';position:absolute;inset:0;opacity:.5;
     background-image:repeating-linear-gradient(0deg, transparent 0 7px, rgba(143,232,255,.05) 7px 8px), repeating-linear-gradient(90deg, transparent 0 7px, rgba(143,232,255,.05) 7px 8px);
   }
-  .hex-mod .corner-tick{position:absolute;width:9px;height:9px;opacity:.9;}
-  .hex-mod .ct-tr{top:6px;left:6px;border-top:2px solid #8fe8ff;border-left:2px solid #8fe8ff;filter:drop-shadow(0 0 3px rgba(143,232,255,.5));}
-  .hex-mod .ct-bl{bottom:6px;right:6px;border-bottom:2px solid #ffb020;border-right:2px solid #ffb020;opacity:.7;}
-  .hex-ring{width:88px;height:88px;position:relative;z-index:1;}
+  .hex-mod .corner-tick{position:absolute;width:11px;height:11px;opacity:.9;}
+  .hex-mod .ct-tr{top:7px;left:7px;border-top:2px solid #8fe8ff;border-left:2px solid #8fe8ff;filter:drop-shadow(0 0 3px rgba(143,232,255,.5));}
+  .hex-mod .ct-bl{bottom:7px;right:7px;border-bottom:2px solid #ffb020;border-right:2px solid #ffb020;opacity:.7;}
+  .hex-ring{width:135px;height:135px;position:relative;z-index:1;}
   .hex-ring svg{width:100%;height:100%;overflow:visible;}
   .hex-ticks{animation:spinCW 240s linear infinite;transform-origin:44px 44px;}
   .hex-ring-outer{fill:none;stroke:rgba(143,232,255,.25);stroke-width:1;}
   .hex-ring-bg{fill:none;stroke:rgba(42,184,217,.18);stroke-width:5;}
   .hex-ring-fg{fill:none;stroke:#8fe8ff;stroke-width:5;stroke-linecap:round;filter:drop-shadow(0 0 5px #8fe8ff) drop-shadow(0 0 10px rgba(42,184,217,.6));}
   .hex-ring-accent{fill:none;stroke:#ffb020;stroke-width:2;stroke-linecap:round;opacity:.85;animation:spinCCW 30s linear infinite;transform-origin:44px 44px;filter:drop-shadow(0 0 4px #ffb020);}
-  .hex-val{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:2;font-family:'Orbitron',sans-serif;font-size:1.05rem;color:#f2fdff;text-shadow:0 0 8px rgba(143,232,255,.8), 0 0 18px rgba(42,184,217,.5);}
-  .hex-mod .hex-lbl{font-size:0.72rem;font-family:'Rajdhani',sans-serif;font-weight:600;letter-spacing:0.3px;color:#7fc4dc;text-transform:uppercase;z-index:1;text-shadow:0 0 6px rgba(42,184,217,.4);}
+  .hex-val{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:2;font-family:'Orbitron',sans-serif;font-size:1.5rem;color:#f2fdff;text-shadow:0 0 8px rgba(143,232,255,.8), 0 0 18px rgba(42,184,217,.5);}
+  .hex-mod .hex-lbl{font-size:0.92rem;font-family:'Rajdhani',sans-serif;font-weight:600;letter-spacing:0.3px;color:#7fc4dc;text-transform:uppercase;z-index:1;text-shadow:0 0 6px rgba(42,184,217,.4);}
 
   #view-contratti{flex:1;display:flex;flex-direction:column;}
 
@@ -191,6 +191,7 @@
     background:linear-gradient(90deg,transparent,#8fe8ff,transparent);animation:hudScan 4s linear infinite;}
   @keyframes pulseDotHud{0%,100%{opacity:.5;box-shadow:0 0 4px #8fe8ff;}50%{opacity:1;box-shadow:0 0 10px #8fe8ff;}}
   .panel .title{font-size:1.15rem;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:0.3px;color:#4fc8e8;text-transform:uppercase;}
+  .section-title{font-size:1.15rem;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:0.3px;color:#4fc8e8;text-transform:uppercase;margin-bottom:14px;}
   .panel-actions{display:flex;gap:10px;flex-wrap:wrap;}
   .total-badge{
     display:flex;align-items:center;gap:10px;padding:8px 16px;
@@ -211,7 +212,7 @@
     #view-home{flex-direction:column;min-height:auto;gap:22px;padding:20px 0;}
     .center-col{order:1;}
     .side-mods{order:2;flex-direction:row;flex-wrap:wrap;justify-content:center;}
-    .hex-mod{width:110px;}
+    .hex-mod{width:140px;}
     .hex-ring{width:64px;height:64px;}
     .hex-val{font-size:0.78rem;}
   }
@@ -256,21 +257,26 @@
   .pw-toggle{position:absolute;right:0;top:28px;font-size:0.7rem;color:#8fb8cc;cursor:pointer;letter-spacing:1.0px;text-transform:uppercase;}
   .pw-toggle:hover{color:#8fe8ff;}
 
-  /* popup compleanni */
-  #birthday-popup{
-    position:fixed;top:24px;left:50%;transform:translateX(-50%) translateY(-20px);
-    z-index:90;max-width:min(92vw,420px);width:100%;
-    background:#05141c;border:1px solid rgba(255,176,32,.6);padding:18px 20px;
-    box-shadow:0 0 30px rgba(255,176,32,.25);
-    opacity:0;pointer-events:none;transition:opacity .4s ease, transform .4s ease;
+  /* stack di avvisi (compleanni, scadenze) */
+  #alerts-stack{
+    position:fixed;top:24px;left:50%;transform:translateX(-50%);
+    z-index:90;display:flex;flex-direction:column;gap:12px;align-items:center;
+    max-width:min(92vw,440px);width:100%;pointer-events:none;
   }
-  #birthday-popup.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto;}
-  #birthday-popup .bp-head{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
-  #birthday-popup .bp-icon{font-size:1.3rem;}
-  #birthday-popup .bp-title{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:0.95rem;letter-spacing:0.3px;color:#ffb020;text-transform:uppercase;}
-  #birthday-popup .bp-names{font-size:0.95rem;color:#e8fbff;line-height:1.6;}
-  #birthday-popup .bp-close{position:absolute;top:10px;right:12px;color:#8fb8cc;cursor:pointer;font-size:1rem;}
-  #birthday-popup .bp-close:hover{color:#ff6767;}
+  .alert-banner{
+    width:100%;background:rgba(9,20,30,.85);backdrop-filter:blur(10px);border-radius:4px 12px 12px 12px;
+    padding:18px 20px;position:relative;box-shadow:0 10px 28px rgba(0,0,0,.5);
+    opacity:0;transform:translateY(-16px);transition:opacity .4s ease, transform .4s ease;pointer-events:none;
+  }
+  .alert-banner.show{opacity:1;transform:translateY(0);pointer-events:auto;}
+  .alert-banner.amber{border:1px solid rgba(255,176,32,.6);box-shadow:0 10px 28px rgba(0,0,0,.5), 0 0 24px rgba(255,176,32,.15);}
+  .alert-banner.cyan{border:1px solid rgba(255,176,32,.6);box-shadow:0 10px 28px rgba(0,0,0,.5), 0 0 24px rgba(255,176,32,.15);}
+  .alert-banner .bp-head{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .alert-banner .bp-icon{font-size:1.3rem;}
+  .alert-banner .bp-title{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:0.95rem;letter-spacing:0.3px;color:#ffb020;text-transform:uppercase;}
+  .alert-banner .bp-names{font-size:0.95rem;color:#e8fbff;line-height:1.6;}
+  .alert-banner .bp-close{position:absolute;top:10px;right:12px;color:#8fb8cc;cursor:pointer;font-size:1rem;}
+  .alert-banner .bp-close:hover{color:#ff6767;}
 
   /* riepilogo Auto Papà */
   .summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;margin-bottom:22px;}
@@ -367,10 +373,17 @@
       <div class="welcome" id="welcome-text">bentornato</div>
     </div>
 
-    <div id="birthday-popup">
-      <span class="bp-close" data-close-birthday="1">✕</span>
-      <div class="bp-head"><span class="bp-icon">🎂</span><span class="bp-title">Compleanno oggi</span></div>
-      <div class="bp-names" id="birthday-names"></div>
+    <div id="alerts-stack">
+      <div id="birthday-popup" class="alert-banner amber">
+        <span class="bp-close" data-close-birthday="1">✕</span>
+        <div class="bp-head"><span class="bp-icon">🎂</span><span class="bp-title">Compleanno oggi</span></div>
+        <div class="bp-names" id="birthday-names"></div>
+      </div>
+      <div id="deadline-popup" class="alert-banner amber">
+        <span class="bp-close" data-close-deadline="1">✕</span>
+        <div class="bp-head"><span class="bp-icon">⚠️</span><span class="bp-title">Scadenze imminenti</span></div>
+        <div class="bp-names" id="deadline-names"></div>
+      </div>
     </div>
 
     <div class="side-mods">
@@ -532,7 +545,7 @@
 
   <!-- PIANO RIENTRO JEEP COMPASS -->
   <div id="view-autopapa" class="hidden">
-    <div class="title" style="margin-bottom:14px;">◈ dashboard</div>
+    <div class="section-title">◈ Dashboard</div>
     <div class="summary-grid">
       <div class="summary-card">
         <div class="lbl">Costo totale auto</div>

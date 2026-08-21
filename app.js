@@ -292,6 +292,7 @@ function bindStaticEvents(){
   document.getElementById("mod-weather").addEventListener("click", openWeatherModal);
   document.getElementById("mod-time").addEventListener("click", openTempoModal);
   document.querySelector("[data-close-birthday]").addEventListener("click", closeBirthdayPopup);
+  document.querySelector("[data-close-deadline]").addEventListener("click", closeDeadlinePopup);
   document.getElementById("mod-compleanni").addEventListener("click", openUpcomingBirthdaysModal);
 
   Object.keys(SECTIONS).forEach(section=>{
@@ -666,6 +667,7 @@ async function onLogin(user){
   await loadAutopapaImpostazioni();
   renderAutopapaSummary();
   checkBirthdaysToday();
+  checkDeadlinesOnStartup();
   updateBirthdayWidget();
   switchView("home");
 }
@@ -692,6 +694,70 @@ function checkBirthdaysToday(){
 
 function closeBirthdayPopup(){
   document.getElementById("birthday-popup").classList.remove("show");
+}
+
+// ---------- BANNER SCADENZE IMMINENTI (all'avvio, 30 giorni, su tutta la piattaforma) ----------
+function identifyRecordLabel(cfg, r){
+  const candidates = ["servizio","targa","nome_documento","intestatario","nome"];
+  for(const key of candidates){ if(r.dati[key]) return r.dati[key]; }
+  const firstVisible = [...cfg.campi].filter(c=>c.mostra_in_tabella).sort((a,b)=>a.ordine-b.ordine)[0];
+  return (firstVisible && r.dati[firstVisible.chiave]) || "Elemento";
+}
+
+function collectUpcomingDeadlines(daysAhead){
+  const now = new Date();
+  const todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const results = [];
+
+  Object.keys(SECTIONS).forEach(key=>{
+    if(key === "contatti") return; // gestiti dal banner compleanni
+    const cfg = SECTIONS[key];
+
+    cfg.campi.forEach(c=>{
+      if(c.tipo !== "data") return;
+      cfg.records.forEach(r=>{
+        const val = r.dati[c.chiave];
+        if(!val) return;
+        const d = new Date(val);
+        if(isNaN(d)) return;
+        const diffDays = Math.floor((d - todayMid) / 86400000);
+        if(diffDays >= 0 && diffDays <= daysAhead){
+          results.push({ label: `${identifyRecordLabel(cfg,r)} — ${c.etichetta}`, daysUntil: diffDays });
+        }
+      });
+    });
+
+    if(cfg.rinnovoField){
+      cfg.records.forEach(r=>{
+        const val = r.dati[cfg.rinnovoField];
+        if(!val) return;
+        const periodicitaVal = cfg.periodicityField ? r.dati[cfg.periodicityField] : null;
+        const d = nextRinnovoDate(val, periodicitaVal);
+        if(!d) return;
+        const diffDays = Math.floor((d - todayMid) / 86400000);
+        if(diffDays >= 0 && diffDays <= daysAhead){
+          results.push({ label: `${identifyRecordLabel(cfg,r)} — Rinnovo`, daysUntil: diffDays });
+        }
+      });
+    }
+  });
+
+  results.sort((a,b)=> a.daysUntil - b.daysUntil);
+  return results;
+}
+
+function checkDeadlinesOnStartup(){
+  const items = collectUpcomingDeadlines(30);
+  if(items.length === 0) return;
+  document.getElementById("deadline-names").innerHTML = items.map(i=>{
+    const quando = i.daysUntil === 0 ? "oggi" : (i.daysUntil === 1 ? "domani" : `tra ${i.daysUntil} giorni`);
+    return `⚠️ ${escapeHtml(i.label)} — ${quando}`;
+  }).join("<br>");
+  document.getElementById("deadline-popup").classList.add("show");
+}
+
+function closeDeadlinePopup(){
+  document.getElementById("deadline-popup").classList.remove("show");
 }
 
 // ---------- PROSSIMI COMPLEANNI (30 giorni) ----------
