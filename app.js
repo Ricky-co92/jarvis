@@ -906,6 +906,10 @@ function renderTable(section){
       } else {
         raw = formatValue(row.dati[c.chiave], c.tipo);
       }
+      if(c.chiave === "url" && row.dati[c.chiave]){
+        const href = /^https?:\/\//i.test(row.dati.url) ? row.dati.url : "https://" + row.dati.url;
+        return `<td><a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="color:#8fe8ff;text-decoration:underline;">${raw}</a></td>`;
+      }
       if(dateForBadge){
         return `<td><span class="${dateStatusClassFromDate(dateForBadge)}">${raw}</span></td>`;
       }
@@ -941,7 +945,7 @@ function computeFieldValue(cfg, dati){
 // ---------- ESPORTAZIONE PDF ----------
 const SECTION_TITLES = {
   contratti:"Contratti telefonici", abbonamenti:"Abbonamenti", veicoli:"Veicoli",
-  documenti:"Documenti", accessi:"Accessi", contatti:"Contatti", autopapa:"Piano Rientro Jeep Compass"
+  documenti:"Documenti", accessi:"Credenziali", contatti:"Contatti", autopapa:"Piano Rientro Jeep Compass"
 };
 
 function exportFormatValue(val, tipo){
