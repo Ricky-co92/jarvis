@@ -83,6 +83,12 @@ const DEFAULT_CAMPI_CONTATTI = [
   { chiave:"note",       etichetta:"Note",       tipo:"testo", ordine:5, mostra_in_tabella:false },
 ];
 
+const DEFAULT_CAMPI_AUTOPAPA = [
+  { chiave:"data",    etichetta:"Data",    tipo:"data", ordine:0, mostra_in_tabella:true },
+  { chiave:"importo", etichetta:"Importo", tipo:"euro", ordine:1, mostra_in_tabella:true },
+  { chiave:"nota",    etichetta:"Nota",    tipo:"testo", ordine:2, mostra_in_tabella:true },
+];
+
 // ---------- REGISTRO SEZIONI (tabella dinamica generica) ----------
 const SECTIONS = {
   contratti: {
@@ -115,6 +121,12 @@ const SECTIONS = {
   contatti: {
     table: "anagrafica_contatti", camposTable: "contatti_campi",
     defaultCampi: DEFAULT_CAMPI_CONTATTI, birthdayField: "compleanno",
+    campi: [], records: []
+  },
+  autopapa: {
+    table: "autopapa_pagamenti", camposTable: "autopapa_campi",
+    defaultCampi: DEFAULT_CAMPI_AUTOPAPA,
+    notaOptions: ["Rata mensile","Extra","Vendita punto","Regalo Papà"],
     campi: [], records: []
   }
 };
@@ -272,6 +284,10 @@ function bindStaticEvents(){
   document.getElementById("btn-gestisci-campi-accessi").addEventListener("click", ()=> openCampiModal("accessi"));
   document.getElementById("btn-nuovo-contatto").addEventListener("click", ()=> openRecordModal("contatti", null));
   document.getElementById("btn-gestisci-campi-contatti").addEventListener("click", ()=> openCampiModal("contatti"));
+  document.getElementById("btn-nuovo-autopapa").addEventListener("click", ()=> openRecordModal("autopapa", null));
+  document.getElementById("btn-gestisci-campi-autopapa").addEventListener("click", ()=> openCampiModal("autopapa"));
+  document.getElementById("ap-costo-totale").addEventListener("change", saveAutopapaImpostazioni);
+  document.getElementById("ap-rata-mensile").addEventListener("change", saveAutopapaImpostazioni);
   document.getElementById("mod-weather").addEventListener("click", openWeatherModal);
   document.getElementById("mod-time").addEventListener("click", openTempoModal);
   document.querySelector("[data-close-birthday]").addEventListener("click", closeBirthdayPopup);
@@ -646,6 +662,8 @@ async function onLogin(user){
     await ensureCampi(section);
     await loadRecords(section);
   }
+  await loadAutopapaImpostazioni();
+  renderAutopapaSummary();
   checkBirthdaysToday();
   updateBirthdayWidget();
   switchView("home");
@@ -728,7 +746,7 @@ function switchView(view){
     el.classList.toggle("active", el.dataset.view === view);
   });
   document.getElementById("view-home").classList.toggle("hidden", view!=="home");
-  ["contratti","abbonamenti","veicoli","documenti","accessi","contatti"].forEach(v=>{
+  ["contratti","abbonamenti","veicoli","documenti","accessi","contatti","autopapa"].forEach(v=>{
     document.getElementById("view-"+v).classList.toggle("hidden", view!==v);
   });
   if(SECTIONS[view]) renderTable(view);
@@ -789,6 +807,53 @@ async function loadRecords(section){
       }
     }
     cfg._migrateRinnovoValues = false;
+  }
+}
+
+// ---------- AUTO PAPÀ: impostazioni + riepilogo ----------
+let autopapaImpostazioni = { costo_totale: 0, rata_mensile: 0 };
+
+async function loadAutopapaImpostazioni(){
+  const { data, error } = await sb.from("autopapa_impostazioni").select("*").eq("user_id", currentUser.id).maybeSingle();
+  if(error){ console.error(error); return; }
+  if(data){
+    autopapaImpostazioni = data;
+  } else {
+    await sb.from("autopapa_impostazioni").insert({ user_id: currentUser.id, costo_totale:0, rata_mensile:0 });
+  }
+  document.getElementById("ap-costo-totale").value = autopapaImpostazioni.costo_totale || "";
+  document.getElementById("ap-rata-mensile").value = autopapaImpostazioni.rata_mensile || "";
+}
+
+async function saveAutopapaImpostazioni(){
+  const costo = parseFloat(document.getElementById("ap-costo-totale").value) || 0;
+  const rata = parseFloat(document.getElementById("ap-rata-mensile").value) || 0;
+  autopapaImpostazioni = { costo_totale: costo, rata_mensile: rata };
+  await sb.from("autopapa_impostazioni").upsert({ user_id: currentUser.id, costo_totale: costo, rata_mensile: rata });
+  renderAutopapaSummary();
+}
+
+function renderAutopapaSummary(){
+  const cfg = SECTIONS.autopapa;
+  const pagato = cfg.records.reduce((acc,r)=> acc + (parseFloat(r.dati.importo) || 0), 0);
+  const costo = autopapaImpostazioni.costo_totale || 0;
+  const rata = autopapaImpostazioni.rata_mensile || 0;
+  const rimanente = Math.max(costo - pagato, 0);
+  const pct = costo > 0 ? Math.min((pagato/costo)*100, 100) : 0;
+
+  document.getElementById("ap-pagato").textContent = "€ " + pagato.toFixed(2);
+  document.getElementById("ap-rimanente").textContent = "€ " + rimanente.toFixed(2);
+  document.getElementById("ap-percentuale").textContent = pct.toFixed(0) + "%";
+  document.getElementById("ap-progress-fill").style.width = pct.toFixed(1) + "%";
+
+  const mesiEl = document.getElementById("ap-mesi-mancanti");
+  if(rata > 0 && rimanente > 0){
+    const mesi = rimanente / rata;
+    mesiEl.textContent = `${mesi.toFixed(1)} mesi (${(mesi/12).toFixed(1)} anni)`;
+  } else if(rimanente <= 0 && costo > 0){
+    mesiEl.textContent = "Saldato ✓";
+  } else {
+    mesiEl.textContent = "—";
   }
 }
 
@@ -871,7 +936,7 @@ function computeFieldValue(cfg, dati){
 // ---------- ESPORTAZIONE PDF ----------
 const SECTION_TITLES = {
   contratti:"Contratti telefonici", abbonamenti:"Abbonamenti", veicoli:"Veicoli",
-  documenti:"Documenti", accessi:"Accessi", contatti:"Contatti"
+  documenti:"Documenti", accessi:"Accessi", contatti:"Contatti", autopapa:"Piano Rientro Jeep Compass"
 };
 
 function exportFormatValue(val, tipo){
@@ -1026,6 +1091,15 @@ function openRecordModal(section, record){
           <select id="rinnovo-mese" style="display:none;">${meseOpts}</select>
         </div></div>`;
     }
+    if(cfg.notaOptions && c.chiave === "nota"){
+      let optionsHtml = cfg.notaOptions.map(o=>`<option value="${escapeHtml(o)}"${o===val?" selected":""}>${escapeHtml(o)}</option>`).join("");
+      const matches = cfg.notaOptions.some(o=>o.toLowerCase()===String(val).toLowerCase());
+      if(val && !matches){
+        optionsHtml = `<option value="${escapeHtml(String(val))}" selected>${escapeHtml(String(val))}</option>` + optionsHtml;
+      }
+      return `<div class="field"><label>${escapeHtml(c.etichetta)}</label>
+        <select data-chiave="${c.chiave}">${optionsHtml}</select></div>`;
+    }
     const inputType = c.tipo==="data" ? "date" : (c.tipo==="numero"||c.tipo==="euro" ? "number" : "text");
     const step = c.tipo==="euro" ? ' step="0.01"' : "";
     return `<div class="field"><label>${escapeHtml(c.etichetta)}</label>
@@ -1095,6 +1169,7 @@ async function saveRecord(){
   closeModal("modal-contratto");
   await loadRecords(activeSection);
   renderTable(activeSection);
+  if(activeSection === "autopapa") renderAutopapaSummary();
 }
 
 async function deleteRecord(){
@@ -1106,6 +1181,7 @@ async function deleteRecord(){
   closeModal("modal-contratto");
   await loadRecords(activeSection);
   renderTable(activeSection);
+  if(activeSection === "autopapa") renderAutopapaSummary();
 }
 
 // ---------- MODAL CAMPI (generico, riusato per contratti e abbonamenti) ----------
