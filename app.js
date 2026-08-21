@@ -127,6 +127,7 @@ const SECTIONS = {
     table: "autopapa_pagamenti", camposTable: "autopapa_campi",
     defaultCampi: DEFAULT_CAMPI_AUTOPAPA,
     notaOptions: ["Rata mensile","Extra","Vendita punto","Regalo Papà"],
+    sortField: "data",
     campi: [], records: []
   }
 };
@@ -791,6 +792,10 @@ async function loadRecords(section){
   const { data, error } = await sb.from(cfg.table).select("*").order("created_at", { ascending:false });
   if(error){ console.error(error); return; }
   cfg.records = data;
+
+  if(cfg.sortField){
+    cfg.records.sort((a,b)=> new Date(b.dati[cfg.sortField]) - new Date(a.dati[cfg.sortField]));
+  }
 
   // migrazione valori: converte le vecchie date fisse del campo rinnovo nel nuovo formato giorno/mese
   if(cfg._migrateRinnovoValues && cfg.rinnovoField){
