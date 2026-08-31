@@ -6,17 +6,20 @@
 <meta name="theme-color" content="#05141c">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="J.A.R.V.I.S.">
+<meta name="apple-mobile-web-app-title" content="WindTre-Jarvis">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="apple-touch-icon" href="icon-180.png">
-<title>J.A.R.V.I.S.</title>
+<title>WindTre-Jarvis</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"></script>
+<link rel="stylesheet" href="compilatore.css?v=3">
 <style>
   :root{ font-size:18px; }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -46,7 +49,6 @@
   .pulse{animation:pulseCore 3.6s ease-in-out infinite;}
   .dot{animation:dotGlow 2.4s ease-in-out infinite;}
 
-  /* transizione di accesso: il core si "monta" (assemble), poi carica, poi flash + iris */
   .core-anim .spin-1,.core-anim .spin-2,.core-anim .spin-3{transition:opacity .55s ease, filter .55s ease;}
   .core-anim.assembling .spin-1{opacity:0;filter:blur(10px);transition-delay:0s;}
   .core-anim.assembling .spin-2{opacity:0;filter:blur(10px);transition-delay:.14s;}
@@ -127,6 +129,7 @@
   #sidebar.open .nav-item:nth-child(2){animation-delay:.15s;}
   #sidebar.open .nav-item:nth-child(3){animation-delay:.28s;}
   #sidebar.open .nav-item:nth-child(4){animation-delay:.41s;}
+  #sidebar.open .nav-item:nth-child(5){animation-delay:.54s;}
   @keyframes itemIn{to{opacity:1;transform:translateX(0);}}
   .nav-item.active{color:#8fe8ff;}
   .nav-item.active::before{content:'';position:absolute;left:12px;top:50%;transform:translateY(-50%);width:5px;height:5px;border-radius:50%;background:#8fe8ff;box-shadow:0 0 6px #8fe8ff;}
@@ -138,7 +141,7 @@
   .center-col .core-anim{width:min(38vw,440px);height:min(38vw,440px);aspect-ratio:1/1;}
   .welcome{margin-top:24px;font-size:1rem;letter-spacing:0.3px;color:#8fb8cc;text-transform:uppercase;}
 
-  /* modulo hex-gauge (ora/data/meteo) */
+  /* modulo hex-gauge (ora/data) */
   .hex-mod{
     width:215px;aspect-ratio:1/1;position:relative;
     background:radial-gradient(circle at 50% 42%, rgba(143,232,255,.12), transparent 60%), linear-gradient(160deg, rgba(42,184,217,.1), rgba(4,14,20,.7));
@@ -167,8 +170,6 @@
   .hex-val{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:2;font-family:'Orbitron',sans-serif;font-size:1.5rem;color:#f2fdff;text-shadow:0 0 8px rgba(143,232,255,.8), 0 0 18px rgba(42,184,217,.5);}
   .hex-mod .hex-lbl{font-size:0.92rem;font-family:'Rajdhani',sans-serif;font-weight:600;letter-spacing:0.3px;color:#7fc4dc;text-transform:uppercase;z-index:1;text-shadow:0 0 6px rgba(42,184,217,.4);}
 
-  #view-contratti{flex:1;display:flex;flex-direction:column;}
-
   /* panels */
   @keyframes hudGlow{0%,100%{box-shadow:0 16px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.04), 0 0 0 1px rgba(143,232,255,.15);}
     50%{box-shadow:0 16px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.04), 0 0 0 1px rgba(143,232,255,.4), 0 0 24px rgba(143,232,255,.12);}}
@@ -193,19 +194,10 @@
   .panel .title{font-size:1.15rem;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:0.3px;color:#4fc8e8;text-transform:uppercase;}
   .section-title{font-size:1.15rem;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:0.3px;color:#4fc8e8;text-transform:uppercase;margin-bottom:14px;}
   .panel-actions{display:flex;gap:10px;flex-wrap:wrap;}
-  .total-badge{
-    display:flex;align-items:center;gap:10px;padding:8px 16px;
-    border:1px solid rgba(143,232,255,.4);background:rgba(42,184,217,.06);
-    font-size:0.72rem;letter-spacing:0.3px;color:#8fb8cc;text-transform:uppercase;
-  }
-  .total-badge .amount{font-family:'Orbitron',sans-serif;font-size:1.05rem;color:#e8fbff;letter-spacing:0.5px;text-shadow:0 0 8px rgba(143,232,255,.5);}
+  .placeholder-msg{padding:40px 10px;text-align:center;color:#8fb8cc;font-size:1rem;line-height:1.7;}
+  .placeholder-msg .big{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1.05rem;color:#4fc8e8;text-transform:uppercase;letter-spacing:0.3px;display:block;margin-bottom:10px;}
 
-  table{width:100%;border-collapse:collapse;font-size:0.95rem;}
-  th{text-align:left;font-size:0.85rem;font-family:'Rajdhani',sans-serif;font-weight:600;letter-spacing:0.3px;color:#8fb8cc;text-transform:uppercase;padding-bottom:12px;border-bottom:1px solid rgba(42,184,217,.2);}
-  td{padding:13px 8px;color:#e8f4f8;border-bottom:1px solid rgba(42,184,217,.08);cursor:pointer;}
-  tr:hover td{background:rgba(42,184,217,.05);}
-  #contratti-table-wrap{overflow-x:auto;}
-  #contratti-empty{padding:30px 0;font-size:1rem;color:#8fb8cc;text-align:center;}
+  iframe.embed-frame{width:100%;flex:1;min-height:70vh;border:1px solid rgba(42,184,217,.25);background:#05141c;}
 
   /* mobile */
   @media (max-width: 900px){
@@ -221,93 +213,282 @@
     #app{padding:16px;}
     .topbar .orb{font-size:0.95rem;letter-spacing:0.3px;}
     .panel{padding:16px;}
-    th:nth-child(n+4), td:nth-child(n+4){display:none;} /* mostra solo prime 3 colonne su mobile */
+  }
+  .of-tabs-bar{display:flex; gap:4px; margin-bottom:16px; border-bottom:1px solid rgba(143,232,255,.15);}
+  .of-tab-btn{background:none; border:none; border-bottom:2px solid transparent; color:#7fc4dc; font-family:'Rajdhani',sans-serif; font-weight:700; font-size:14px; text-transform:uppercase; letter-spacing:.03em; padding:10px 18px; cursor:pointer;}
+  .of-tab-btn:hover{color:#8fe8ff;}
+  .of-tab-btn.active{color:#ffe6b0; border-bottom-color:#ffb020;}
+  .of-search-row{margin-bottom:16px;}
+  .of-search-input{
+    width:100%; max-width:480px; background:rgba(42,184,217,.06); border:1px solid rgba(143,232,255,.25);
+    border-radius:4px; color:#eafcff; padding:10px 18px; font-family:'Inter',sans-serif; font-size:14px;
+  }
+  .of-search-input::placeholder{color:rgba(234,252,255,.35);}
+  .of-search-input:focus{outline:none; border-color:#8fe8ff; box-shadow:0 0 0 2px rgba(143,232,255,.15);}
+  .of-toolbar{display:flex;flex-wrap:wrap;gap:18px;align-items:center;margin-bottom:20px;}
+  .of-filter-group{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .of-filter-label{font-family:'Rajdhani',sans-serif;font-size:12px;color:#7fc4dc;text-transform:uppercase;letter-spacing:.05em;font-weight:700;}
+  .of-chip{background:rgba(42,184,217,.06);border:1px solid rgba(143,232,255,.25);color:#8fb8cc;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.02em;padding:8px 16px;border-radius:4px;cursor:pointer;transition:all .15s ease;}
+  .of-chip:hover{border-color:#8fe8ff;}
+  .of-chip.active{background:rgba(143,232,255,.15);border-color:#8fe8ff;color:#eafcff;box-shadow:0 0 10px rgba(143,232,255,.25);}
+  .of-manage-btn{margin-left:auto;border-color:#ffb020;color:#ffe6b0;}
+  .of-manage-btn:hover{background:rgba(255,176,32,.12);}
+  .of-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;}
+  .of-card{position:relative;background:rgba(13,25,36,.6);border:1px solid rgba(143,232,255,.2);border-radius:4px 14px 14px 14px;padding:0;cursor:pointer;transition:all .15s ease;overflow:hidden;display:flex;flex-direction:column;}
+  .of-card:hover{border-color:#8fe8ff;}
+  .of-card-header{position:relative;padding:14px 40px 12px 14px;border-left:4px solid #8fe8ff;background:rgba(143,232,255,.04);}
+  .of-corner-tag{position:absolute;top:10px;right:10px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:9.5px;letter-spacing:.05em;padding:2px 7px;border-radius:3px;background:rgba(255,176,32,.15);color:#ffe6b0;border:1px solid rgba(255,176,32,.4);}
+  .of-card .of-badge-slot{display:block;min-height:23px;margin-bottom:8px;}
+  .of-card .of-badge{display:inline-block;font-size:10.5px;font-family:'Rajdhani',sans-serif;font-weight:700;text-transform:uppercase;color:#ffe6b0;background:rgba(255,176,32,.15);border:1px solid rgba(255,176,32,.4);border-radius:3px;padding:2px 7px;}
+  .of-card .of-nome{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:16px;color:#eafcff;line-height:1.3;}
+  .of-card-body{padding:14px;flex:1;}
+  .of-card .of-extra-field{margin-top:8px; font-size:12px; color:#b8dae8;}
+  .of-card .of-extra-field b{color:#7fc4dc; font-weight:600;}
+  .of-card .of-prominent-label{font-size:10.5px; color:#7fc4dc; text-transform:uppercase; letter-spacing:.05em; margin-bottom:5px;}
+  .of-card .of-prominent{display:inline-block; font-family:'Orbitron',sans-serif;font-size:1.2rem;color:#ffb020;background:rgba(255,176,32,.08);border:1px solid rgba(255,176,32,.35);border-radius:20px;padding:6px 16px;margin-bottom:6px;}
+  .of-card .of-link-badge{margin-top:10px; padding-top:8px; border-top:1px dashed rgba(255,176,32,.3); font-size:11px; color:#ffe6b0;}
+  .of-card .of-tag{padding:8px 14px;background:rgba(0,0,0,.18);font-size:9.5px;color:#557b8c;text-transform:uppercase;letter-spacing:.04em;}
+  .of-card.linked-highlight{border-color:#ffb020; box-shadow:0 0 16px rgba(255,176,32,.35);}
+  .of-reorder-list{display:flex; flex-direction:column; gap:6px; max-height:60vh; overflow-y:auto;}
+  .of-reorder-row{display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid rgba(143,232,255,.2); border-radius:4px; background:rgba(13,25,36,.5);}
+  .of-reorder-handle{cursor:grab; color:#7fc4dc; font-size:16px; touch-action:none; flex-shrink:0;}
+  .of-reorder-row .orr-name{flex:1; font-size:13.5px; color:#eafcff; font-family:'Rajdhani',sans-serif; font-weight:600;}
+  .of-reorder-row .orr-tag{font-size:10.5px; color:#7fc4dc; text-transform:uppercase; letter-spacing:.03em; flex-shrink:0;}
+  .of-reorder-row.sortable-ghost{opacity:.35; border-color:#ffb020;}
+  .of-reorder-row.sortable-chosen{border-color:#ffb020; box-shadow:0 0 14px rgba(255,176,32,.3);}
+
+  .of-selling-bar{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:60;background:#0d1924;border:1px solid #ffb020;border-radius:10px;padding:14px 20px;display:flex;align-items:center;gap:20px;box-shadow:0 8px 30px rgba(0,0,0,.5),0 0 20px rgba(255,176,32,.2);font-family:'Rajdhani',sans-serif;font-weight:700;color:#ffe6b0;}
+  .of-btn{background:rgba(42,184,217,.1);border:1px solid #2ab8d9;color:#c8f2ff;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:13.5px;text-transform:uppercase;padding:9px 18px;border-radius:3px;cursor:pointer;letter-spacing:.02em;}
+  .of-btn:hover{background:rgba(42,184,217,.18);}
+  .of-btn.accent{border-color:#ffb020;color:#ffe6b0;}
+  .of-btn.accent:hover{background:rgba(255,176,32,.12);}
+  .of-btn.ghost{border-color:rgba(143,232,255,.25);color:#8fb8cc;background:transparent;}
+  .of-btn.danger{border-color:#c0392b;color:#ff8f7a;}
+  .of-btn.danger:hover{background:rgba(192,57,43,.15);}
+
+  .of-modal-backdrop{position:fixed;inset:0;background:rgba(1,5,8,.7);z-index:70;display:flex;align-items:center;justify-content:center;padding:20px;}
+  .of-modal{background:#0d1924;border:1px solid rgba(143,232,255,.3);border-radius:4px 16px 16px 16px;max-width:640px;width:100%;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.6);position:relative;overflow:hidden;}
+  .of-modal.of-modal-wide{max-width:900px;}
+  .of-cardconfig-layout{display:grid; grid-template-columns:1fr 260px; gap:20px; align-items:start;}
+  @media (max-width:640px){ .of-cardconfig-layout{grid-template-columns:1fr;} }
+  .of-cardconfig-layout .of-config-preview-label{margin-top:0;}
+  .of-modal::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#2ab8d9,#8fe8ff,#ffb020);}
+  .of-modal-head{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid rgba(143,232,255,.15);}
+  .of-modal-head .title{font-family:'Rajdhani',sans-serif;font-weight:700;color:#4fc8e8;text-transform:uppercase;font-size:16px;}
+  .of-modal-close{background:none;border:none;color:#8fb8cc;font-size:22px;cursor:pointer;line-height:1;}
+  .of-modal-body{padding:20px 22px;overflow-y:auto;}
+  .of-modal-foot{display:flex;padding:14px 22px;border-top:1px solid rgba(143,232,255,.15);gap:8px;}
+
+  /* ===== CONFIGURAZIONI ===== */
+  .cfg-label{display:block;font-family:'Rajdhani',sans-serif;font-weight:700;text-transform:uppercase;font-size:12px;letter-spacing:.03em;color:#7fc4dc;margin:16px 0 6px;}
+  .cfg-label:first-child{margin-top:0;}
+  .cfg-input{width:100%;background:rgba(42,184,217,.05);border:1px solid rgba(143,232,255,.18);border-radius:3px;color:#eafcff;padding:8px 10px;font-family:'Inter',sans-serif;font-size:13.5px;}
+  select.cfg-input{background-color:#0d1924;}
+  select.cfg-input option{background-color:#0d1924;color:#eafcff;}
+  .cfg-input:focus{outline:none;border-color:#8fe8ff;}
+  .cfg-off-list{max-height:180px;overflow-y:auto;border:1px solid rgba(143,232,255,.12);border-radius:4px;margin-top:8px;}
+  .cfg-off-row{display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid rgba(143,232,255,.06);font-size:13px;}
+  .cfg-off-row:last-child{border-bottom:none;}
+  .cfg-off-row input[type=checkbox]{accent-color:#ffb020;cursor:pointer;}
+  .cfg-off-row .cfg-off-price{margin-left:auto;color:#7fc4dc;font-size:12px;}
+  .cfg-off-pricesel{max-width:220px;background:rgba(42,184,217,.06);border:1px solid rgba(143,232,255,.18);border-radius:3px;color:#eafcff;font-size:11.5px;padding:4px 6px;}
+  .cfg-off-pricesel:disabled{opacity:.4;}
+  .cfg-detail-section .of-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;}
+  .cfg-fasce-list{margin-top:8px;display:flex;flex-direction:column;gap:8px;}
+  .cfg-fascia-row{display:flex;gap:8px;align-items:center;background:rgba(42,184,217,.04);border:1px solid rgba(143,232,255,.12);border-radius:4px;padding:8px;flex-wrap:wrap;}
+  .cfg-fascia-row input[type=text]{flex:1;min-width:120px;}
+  .cfg-fascia-row input[type=number]{width:100px;}
+  .cfg-fascia-row label{font-size:11px;color:#7fc4dc;display:flex;align-items:center;gap:4px;white-space:nowrap;}
+  .cfg-fascia-del{background:none;border:none;color:#c0392b;font-size:16px;cursor:pointer;}
+  .cfg-fascia-del:hover{color:#ff6767;}
+  .cfg-total-preview{margin-top:14px;font-family:'Rajdhani',sans-serif;font-size:13px;color:#7fc4dc;}
+  .cfg-card{border:1px solid rgba(255,176,32,.4);border-radius:4px 12px 12px 12px;background:linear-gradient(160deg,rgba(255,176,32,.08),rgba(13,25,36,.6));box-shadow:0 0 14px rgba(255,176,32,.1);display:flex;flex-direction:column;}
+  .cfg-card-head{padding:12px 14px;border-bottom:1px solid rgba(255,176,32,.18);cursor:pointer;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+  .cfg-card-head .cfg-nome{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:16px;color:#eafcff;}
+  .cfg-cat-tag{font-size:10px;font-family:'Rajdhani',sans-serif;font-weight:700;border:1px solid rgba(255,176,32,.4);color:#ffe6b0;background:rgba(255,176,32,.12);border-radius:3px;padding:2px 7px;white-space:nowrap;}
+  .cfg-price-pill{display:inline-block;font-family:'Orbitron',sans-serif;font-size:1.15rem;font-weight:700;color:#ffb020;background:rgba(255,176,32,.1);border:1px solid rgba(255,176,32,.4);border-radius:20px;padding:5px 16px;}
+  .cfg-price-label{font-size:10.5px;font-family:'Rajdhani',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:#ffb020;margin-bottom:4px;min-height:13px;}
+  .cfg-price-wrap{margin-bottom:8px;}
+  .cfg-fasce-slot{margin-top:auto;padding-top:10px;}
+  .cfg-fasce-slot:empty{padding-top:0;}
+  .cfg-nota{font-size:12px;color:#a8d8ea;font-style:italic;margin-top:6px;}
+  .cfg-detail-section{margin-bottom:16px;}
+  .cfg-detail-section .cfg-label{margin:0 0 6px;}
+  .cfg-card-body{padding:12px 14px;flex:1;display:flex;flex-direction:column;}
+  .cfg-offer-chip{display:inline-block;font-size:11px;background:rgba(143,232,255,.08);border:1px solid rgba(143,232,255,.2);border-radius:3px;padding:3px 7px;margin:0 4px 4px 0;color:#c8f0ff;}
+  .cfg-fascia-line{display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;border-top:1px dashed rgba(143,232,255,.1);}
+  .cfg-fascia-line b{color:#ffb020;}
+  .cfg-fasce-slot{margin-top:auto;padding-top:10px;}
+
+  /* ===== COMUNI AREE BIANCHE ===== */
+  .cab-search-box{max-width:520px;position:relative;}
+  #cabSearchResult{margin-top:12px;}
+  .cab-result-card{border-radius:4px 12px 12px 12px;padding:14px 16px;font-family:'Inter',sans-serif;}
+  .cab-result-card.found{background:rgba(127,232,160,.08);border:1px solid rgba(127,232,160,.4);}
+  .cab-result-card.notfound{background:rgba(224,80,80,.07);border:1px solid rgba(224,80,80,.4);}
+  .cab-result-title{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:16px;margin-bottom:6px;}
+  .cab-result-card.found .cab-result-title{color:#8ff0b0;}
+  .cab-result-card.notfound .cab-result-title{color:#ff8f8f;}
+  .cab-result-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-top:8px;font-size:12.5px;color:#c8f0ff;}
+  .cab-result-grid b{color:#eafcff;display:block;font-size:13px;}
+  .cab-suggest-list{border:1px solid rgba(143,232,255,.2);border-radius:4px;margin-top:6px;max-height:220px;overflow-y:auto;position:absolute;background:#0d1924;width:100%;z-index:5;}
+  .cab-suggest-item{padding:8px 12px;font-size:13px;color:#c8f0ff;cursor:pointer;}
+  .cab-suggest-item:hover{background:rgba(143,232,255,.08);}
+  .cab-nearby-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:8px;}
+  .cab-nearby-chip{border:1px solid rgba(143,232,255,.18);border-radius:4px;padding:10px 12px;font-size:13px;display:flex;justify-content:space-between;align-items:center;background:rgba(13,25,36,.5);}
+  .cab-nearby-chip .name{color:#eafcff;font-family:'Rajdhani',sans-serif;font-weight:600;}
+  .cab-nearby-chip .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-left:8px;}
+  .cab-nearby-chip .dot.yes{background:#7fe8a0;box-shadow:0 0 6px rgba(127,232,160,.6);}
+  .cab-nearby-chip .dot.no{background:#e05050;box-shadow:0 0 6px rgba(224,80,80,.5);}
+
+  /* ===== IMPOSTAZIONI ===== */
+  .stg-user-card{border:1px solid rgba(143,232,255,.18);border-radius:4px;background:rgba(13,25,36,.5);margin-bottom:12px;overflow:hidden;}
+  .stg-user-head{display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;}
+  .stg-user-email{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:14.5px;color:#eafcff;flex:1;}
+  .stg-sa-badge{font-size:10px;font-family:'Rajdhani',sans-serif;font-weight:700;border:1px solid rgba(255,176,32,.4);color:#ffe6b0;background:rgba(255,176,32,.12);border-radius:3px;padding:2px 7px;}
+  .stg-user-body{padding:0 16px 16px;border-top:1px solid rgba(143,232,255,.1);display:none;}
+  .stg-user-body.open{display:block;padding-top:12px;}
+  .stg-page-block{margin-bottom:12px;}
+  .stg-page-title{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:13px;color:#8fe8ff;margin-bottom:6px;}
+  .stg-action-row{display:flex;flex-wrap:wrap;gap:14px;}
+  .stg-action-row label{display:flex;align-items:center;gap:6px;font-size:12.5px;color:#c8e8f2;}
+  .stg-action-row input[type=checkbox]{accent-color:#ffb020;}
+  .stg-user-actions{display:flex;gap:8px;margin-top:10px;}
+
+  /* ===== MANUALI ===== */
+  .mn-hist-row{display:flex;align-items:center;gap:10px;font-size:12.5px;color:#a8d8ea;padding:5px 0;}
+  .mn-hist-row a{color:#8fe8ff;}
+  .mn-cat-section{margin-bottom:8px;}
+  .mn-cat-head{display:flex;align-items:center;gap:10px;padding:12px 4px;cursor:pointer;border-bottom:1px solid rgba(143,232,255,.15);}
+  .mn-cat-head .arrow{color:#8fe8ff;font-size:12px;transition:transform .15s;}
+  .mn-cat-head.closed .arrow{transform:rotate(-90deg);}
+  .mn-cat-head-title{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.03em;color:#8fe8ff;flex:1;}
+  .mn-cat-count{font-size:11.5px;color:#557b8c;}
+  .mn-cat-body{padding-top:12px;}
+  .mn-cat-body.closed{display:none;}
+  .mn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;padding:4px 0 8px;}
+  .mn-card{border:1px solid rgba(143,232,255,.18);border-radius:4px 12px 12px 12px;background:rgba(13,25,36,.5);overflow:hidden;display:flex;flex-direction:column;}
+  .mn-thumb{aspect-ratio:3/4;background:#0a141c;cursor:pointer;overflow:hidden;display:flex;align-items:center;justify-content:center;}
+  .mn-thumb img{width:100%;height:100%;object-fit:cover;}
+  .mn-thumb-fallback{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:18px;color:#3a5a6c;letter-spacing:.05em;}
+  .mn-card-info{padding:10px 12px;flex:1;display:flex;flex-direction:column;gap:4px;}
+  .mn-card-info .mn-title{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:13px;color:#eafcff;cursor:pointer;line-height:1.25;}
+  .mn-card-info .mn-title:hover{color:#8fe8ff;}
+  .mn-card-info .mn-ver-tag{font-size:10.5px;color:#7fc4dc;}
+  .mn-card-actions{display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:6px;}
+  .mn-history-toggle{font-size:10.5px;color:#7fc4dc;cursor:pointer;text-decoration:underline;}
+  .mn-icon-btn{background:none;border:none;color:#7fc4dc;font-size:13px;cursor:pointer;padding:2px 4px;}
+  .mn-icon-btn:hover{color:#8fe8ff;}
+  .mn-del-btn:hover{color:#ff6767;}
+  .mn-bulk-fam{border:1px solid rgba(143,232,255,.18);border-radius:4px;background:rgba(13,25,36,.5);margin-bottom:10px;padding:12px 14px;}
+  .mn-bulk-fam-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px;}
+  .mn-bulk-fam-head input[type=text]{flex:2;min-width:180px;}
+  .mn-bulk-fam-head select{flex:1;min-width:140px;}
+  .mn-bulk-ver-row{display:flex;align-items:center;gap:8px;font-size:12px;color:#a8d8ea;padding:3px 0;}
+  .mn-bulk-ver-row input[type=date]{background:rgba(42,184,217,.05);border:1px solid rgba(143,232,255,.18);border-radius:3px;color:#eafcff;padding:2px 6px;font-size:11.5px;}
+  .mn-bulk-flag{color:#ffb020;font-size:11px;}
+  .mn-bulk-toggle-versions{font-size:11px;color:#7fc4dc;cursor:pointer;text-decoration:underline;}
+  .mn-bulk-versions{display:none;margin-top:6px;padding-top:6px;border-top:1px dashed rgba(143,232,255,.1);}
+  .mn-bulk-versions.open{display:block;}
+  .of-admin-list{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;max-height:240px;overflow-y:auto;}
+  .of-admin-row{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border:1px solid rgba(143,232,255,.15);border-radius:4px;font-size:13px;color:#c8e8f2;cursor:pointer;}
+  .of-admin-row:hover{border-color:#8fe8ff;}
+  .of-admin-row .tag{font-size:10px;color:#7fc4dc;text-transform:uppercase;}
+  .of-admin-form{border:1px solid rgba(143,232,255,.2);border-radius:4px 12px 12px 12px;padding:16px 18px;margin-top:10px;}
+  .of-admin-form legend{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:11px;color:#4fc8e8;text-transform:uppercase;letter-spacing:.05em;padding:0 6px;}
+  .of-admin-form legend{font-family:'Rajdhani',sans-serif;font-weight:700;color:#4fc8e8;text-transform:uppercase;font-size:12.5px;padding:0 6px;}
+  .of-admin-form .row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;}
+  .of-admin-form .field{flex:1 1 160px;display:flex;flex-direction:column;gap:4px;}
+  .of-admin-form .field.wide{flex:1 1 100%;}
+  .of-admin-form label{font-family:'Rajdhani',sans-serif;font-size:12px;color:#7fc4dc;text-transform:uppercase;letter-spacing:.03em;}
+  .of-admin-form input,.of-admin-form select,.of-admin-form textarea{background:rgba(42,184,217,.06);border:1px solid rgba(143,232,255,.25);border-radius:4px;color:#eafcff;padding:9px 10px;font-family:'Inter',sans-serif;font-size:13.5px;}
+  .of-admin-form textarea{resize:vertical;}
+  .of-admin-form .actions{display:flex;gap:10px;align-items:center;margin-top:6px;flex-wrap:wrap;}
+  #ofSellingList{display:flex;flex-direction:column;gap:10px;}
+  .of-sn-item{display:flex;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid rgba(143,232,255,.15);border-radius:4px;font-size:13px;color:#c8e8f2;}
+  .of-sn-item b{color:#eafcff;}
+  @media (max-width:640px){
+    .of-manage-btn{margin-left:0;}
+    .of-selling-bar{flex-direction:column;gap:10px;left:12px;right:12px;transform:none;}
   }
 
-  /* modal */
-  .modal-overlay{position:fixed;inset:0;background:rgba(1,5,8,.85);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50;}
-  .modal{max-width:540px;width:100%;max-height:88vh;overflow-y:auto;position:relative;
-    background:rgba(9,20,30,.72); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
-    border-radius:4px 18px 18px 18px;padding:28px; animation:hudGlow 5s ease-in-out infinite;}
-  .modal::before{content:'';position:absolute;top:0;left:0;width:22px;height:22px;
-    border-top:2px solid #8fe8ff;border-left:2px solid #8fe8ff;border-top-left-radius:4px;opacity:.9;
-    filter:drop-shadow(0 0 4px rgba(143,232,255,.5));pointer-events:none;}
-  .modal::after{content:'';position:absolute;bottom:0;right:0;width:18px;height:18px;
-    border-bottom:2px solid #ffb020;border-right:2px solid #ffb020;border-bottom-right-radius:16px;opacity:.6;pointer-events:none;}
-  .modal .title{font-size:1.15rem;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:0.3px;color:#4fc8e8;text-transform:uppercase;margin-bottom:20px;
-    display:flex;align-items:center;gap:10px;padding-bottom:14px;border-bottom:1px solid rgba(143,232,255,.12);}
-  .modal .title::before{content:'';width:9px;height:9px;border-radius:50%;background:#8fe8ff;flex-shrink:0;
-    animation:pulseDotHud 2s ease-in-out infinite;box-shadow:0 0 6px #8fe8ff;}
-  .modal-close{position:absolute;top:18px;right:20px;cursor:pointer;color:#8fb8cc;font-size:1.3rem;padding:4px 8px;}
-  .modal-close:hover{color:#ff6767;}
-  .modal-actions{display:flex;justify-content:space-between;margin-top:24px;gap:10px;}
-  .campo-row{display:flex;gap:8px;align-items:center;margin-bottom:10px;padding:10px;border:1px solid rgba(42,184,217,.15);flex-wrap:wrap;}
-  .campo-row input[type=text]{flex:1;min-width:120px;background:transparent;border:none;border-bottom:1px solid rgba(42,184,217,.3);color:#e8fbff;padding:6px;font-family:'Inter',sans-serif;font-size:0.95rem;outline:none;}
-  .campo-row select{background:#05141c;border:1px solid rgba(42,184,217,.3);color:#e8fbff;font-size:0.85rem;padding:6px;}
-  .campo-row label.chk{font-size:0.8rem;color:#8fb8cc;display:flex;align-items:center;gap:4px;white-space:nowrap;}
-  .campo-del{cursor:pointer;color:#ff6767;font-size:1.1rem;padding:4px 8px;}
-
-  #radar-map{width:100%;height:220px;margin-top:16px;border:1px solid rgba(42,184,217,.3);filter:saturate(1.3) hue-rotate(-8deg);}
-  #radar-map .leaflet-control-attribution{display:none;}
-  .radar-label{font-size:0.68rem;letter-spacing:0.3px;color:#8fb8cc;text-transform:uppercase;margin-top:8px;text-align:center;}
-
-  .date-expired{color:#ff6767;}
-  .date-soon{color:#ffb020;}
-  .pw-field-wrap{position:relative;}
-  .pw-toggle{position:absolute;right:0;top:28px;font-size:0.7rem;color:#8fb8cc;cursor:pointer;letter-spacing:1.0px;text-transform:uppercase;}
-  .pw-toggle:hover{color:#8fe8ff;}
-
-  /* stack di avvisi (compleanni, scadenze) */
-  #alerts-stack{
-    position:fixed;top:24px;left:50%;transform:translateX(-50%);
-    z-index:90;display:flex;flex-direction:column;gap:12px;align-items:center;
-    max-width:min(92vw,440px);width:100%;pointer-events:none;
+  /* ===== GESTIONE DATI (tabella editabile) ===== */
+  .gd-panel{
+    border-radius:4px 16px 16px 16px; position:relative; margin-bottom:20px;
+    background:rgba(13,25,36,.55); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+    padding:28px; border:1px solid rgba(143,232,255,.15);
   }
-  .alert-banner{
-    width:100%;background:rgba(9,20,30,.85);backdrop-filter:blur(10px);border-radius:4px 12px 12px 12px;
-    padding:18px 20px;position:relative;box-shadow:0 10px 28px rgba(0,0,0,.5);
-    opacity:0;transform:translateY(-16px);transition:opacity .4s ease, transform .4s ease;pointer-events:none;
+  .gd-table-wrap{overflow:auto; max-height:65vh; border:1px solid rgba(143,232,255,.15); border-radius:6px;}
+  .gd-table{border-collapse:separate; border-spacing:0; width:100%; min-width:1100px; font-size:12.5px;}
+  .gd-table thead th{
+    background:#12232f; color:#4fc8e8; font-family:'Rajdhani',sans-serif; font-weight:700;
+    text-transform:uppercase; letter-spacing:.03em; font-size:11px; padding:10px 8px; text-align:left;
+    position:sticky; top:0; z-index:4; border-bottom:1px solid rgba(143,232,255,.25); white-space:nowrap;
   }
-  .alert-banner.show{opacity:1;transform:translateY(0);pointer-events:auto;}
-  .alert-banner.amber{border:1px solid rgba(255,176,32,.6);box-shadow:0 10px 28px rgba(0,0,0,.5), 0 0 24px rgba(255,176,32,.15);}
-  .alert-banner.cyan{border:1px solid rgba(255,176,32,.6);box-shadow:0 10px 28px rgba(0,0,0,.5), 0 0 24px rgba(255,176,32,.15);}
-  .alert-banner .bp-head{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
-  .alert-banner .bp-icon{font-size:1.3rem;}
-  .alert-banner .bp-title{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:0.95rem;letter-spacing:0.3px;color:#ffb020;text-transform:uppercase;}
-  .alert-banner .bp-names{font-size:0.95rem;color:#e8fbff;line-height:1.6;}
-  .alert-banner .bp-close{position:absolute;top:10px;right:12px;color:#8fb8cc;cursor:pointer;font-size:1rem;}
-  .alert-banner .bp-close:hover{color:#ff6767;}
+  .gd-table tbody tr{border-bottom:1px solid rgba(143,232,255,.08);}
+  .gd-table tbody tr.gd-dirty{background:rgba(255,176,32,.06);}
+  .gd-table tbody tr.gd-new{background:rgba(127,232,160,.06);}
+  .gd-table td{padding:4px;vertical-align:top;}
+  .gd-table input, .gd-table select, .gd-table textarea{
+    width:100%; min-width:90px; background:rgba(42,184,217,.05); border:1px solid rgba(143,232,255,.18);
+    border-radius:3px; color:#eafcff; padding:6px 7px; font-family:'Inter',sans-serif; font-size:12.5px;
+  }
+  .gd-table textarea{min-width:160px; min-height:36px; resize:vertical;}
+  .gd-table input:focus, .gd-table select:focus, .gd-table textarea:focus{outline:none; border-color:#8fe8ff;}
+  .gd-table select{min-width:110px; cursor:pointer;}
+  .gd-table select option{background:#0d1924; color:#eafcff;}
+  .gd-table .gd-flag-cell{text-align:center;}
+  .gd-table .gd-flag-cell input[type=checkbox]{width:18px; height:18px; accent-color:#ffb020; cursor:pointer;}
+  .gd-table .gd-nome-input{min-width:140px;}
+  .gd-del-btn{background:none;border:none;color:#c0392b;font-size:15px;cursor:pointer;padding:6px;}
+  .gd-del-btn:hover{color:#ff6767;}
+  .gd-table thead th.gd-custom-col{position:sticky; top:0; padding-right:20px;}
+  .gd-col-remove{position:absolute; top:6px; right:2px; background:none; border:none; color:#7fc4dc; font-size:13px; cursor:pointer; line-height:1;}
+  .gd-col-remove:hover{color:#ff6767;}
+  .gd-col-eye{position:absolute; top:6px; right:20px; background:none; border:none; font-size:12px; cursor:pointer; line-height:1;}
+  .gd-col-star{position:absolute; top:6px; right:38px; background:none; border:none; font-size:12px; cursor:pointer; line-height:1;}
+  .gd-col-link{position:absolute; top:6px; right:56px; background:none; border:none; font-size:12px; cursor:pointer; line-height:1;}
+  .gd-table th:first-child, .gd-table td:first-child{position:sticky; left:0; z-index:2; background:#0d1924;}
+  .gd-table th:nth-child(2), .gd-table td:nth-child(2){position:sticky; left:38px; z-index:2; background:#0d1924;}
+  .gd-table th:last-child, .gd-table td:last-child{position:sticky; right:0; z-index:2; background:#0d1924; text-align:center;}
+  .gd-table thead th:first-child, .gd-table thead th:last-child, .gd-table thead th:nth-child(2){z-index:5;}
+  .gd-sort-th{cursor:pointer; user-select:none;}
+  .gd-sort-th:hover{color:#8fe8ff;}
+  .gd-sort-arrow{margin-left:4px; opacity:.7;}
 
-  /* riepilogo Auto Papà */
-  .summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;margin-bottom:22px;}
-  .summary-card{
-    position:relative;padding:16px;border-radius:4px 12px 12px 12px;overflow:hidden;
-    background:rgba(13,25,36,.55); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
-    animation:hudGlow 5s ease-in-out infinite;
-  }
-  .summary-card::before{content:'';position:absolute;top:0;left:0;width:16px;height:16px;
-    border-top:2px solid #8fe8ff;border-left:2px solid #8fe8ff;border-top-left-radius:4px;opacity:.9;
-    filter:drop-shadow(0 0 3px rgba(143,232,255,.5));pointer-events:none;}
-  .summary-card::after{content:'';position:absolute;bottom:0;right:0;width:14px;height:14px;
-    border-bottom:2px solid #ffb020;border-right:2px solid #ffb020;border-bottom-right-radius:10px;opacity:.6;pointer-events:none;}
-  .summary-card .lbl{font-size:0.72rem;font-family:'Rajdhani',sans-serif;font-weight:600;letter-spacing:0.3px;color:#8fb8cc;text-transform:uppercase;}
-  .summary-card .val{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1.4rem;color:#e8fbff;margin-top:6px;}
-  .summary-card .val.accent{color:#ffb020;}
-  .summary-card input{background:rgba(42,184,217,.06);border:1px solid rgba(42,184,217,.3);border-radius:3px;color:#e8fbff;
-    font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1.15rem;padding:8px 8px;width:100%;margin-top:6px;outline:none;}
-  .progress-bar-wrap{
-    grid-column:1 / -1;position:relative;padding:16px;border-radius:4px 12px 12px 12px;overflow:hidden;
-    background:rgba(13,25,36,.55); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
-    animation:hudGlow 5s ease-in-out infinite;
-  }
-  .progress-bar-wrap::before{content:'';position:absolute;top:0;left:0;width:16px;height:16px;
-    border-top:2px solid #8fe8ff;border-left:2px solid #8fe8ff;border-top-left-radius:4px;opacity:.9;
-    filter:drop-shadow(0 0 3px rgba(143,232,255,.5));pointer-events:none;}
-  .progress-bar-wrap::after{content:'';position:absolute;bottom:0;right:0;width:14px;height:14px;
-    border-bottom:2px solid #ffb020;border-right:2px solid #ffb020;border-bottom-right-radius:10px;opacity:.6;pointer-events:none;}
-  .progress-bar-track{width:100%;height:10px;background:rgba(42,184,217,.12);position:relative;overflow:hidden;margin-top:10px;}
-  .progress-bar-fill{height:100%;background:linear-gradient(90deg,#2ab8d9,#8fe8ff);box-shadow:0 0 10px rgba(143,232,255,.6);transition:width .5s ease;}
-  .progress-bar-label{display:flex;justify-content:space-between;font-size:0.78rem;font-family:'Rajdhani',sans-serif;font-weight:600;letter-spacing:0.3px;color:#8fb8cc;text-transform:uppercase;}
+  /* ===== Modale dettaglio tariffa ===== */
+  .of-detail-name{font-family:'Rajdhani',sans-serif; font-weight:700; font-size:1.5rem; color:#eafcff; margin-bottom:6px;}
+  .of-detail-tag{display:inline-block; font-size:10.5px; color:#4fc8e8; text-transform:uppercase; letter-spacing:.06em; margin-bottom:22px; padding:3px 10px; border:1px solid rgba(79,200,232,.35); border-radius:3px; background:rgba(79,200,232,.08);}
+  .of-detail-fields{display:flex; flex-direction:column; gap:0; margin-bottom:20px; border:1px solid rgba(143,232,255,.12); border-radius:4px 12px 12px 12px; overflow:hidden;}
+  .of-detail-field{display:flex; justify-content:space-between; align-items:baseline; gap:14px; padding:10px 14px; border-bottom:1px solid rgba(143,232,255,.08);}
+  .of-detail-field:last-child{border-bottom:none;}
+  .of-detail-field:nth-child(odd){background:rgba(143,232,255,.03);}
+  .of-detail-field.of-detail-field-stacked{flex-direction:column; align-items:flex-start; gap:4px;}
+  .of-detail-field.of-detail-field-stacked .dv{text-align:left;}
+  .of-detail-field .dl{font-size:11px; color:#7fc4dc; text-transform:uppercase; letter-spacing:.04em; flex-shrink:0;}
+  .of-detail-field .dv{font-size:14px; color:#eafcff; white-space:pre-line; text-align:right;}
+  .of-detail-field .dv.dv-empty{color:#557b8c; font-style:italic;}
+  .of-linked-title{font-size:11px; color:#ffe6b0; text-transform:uppercase; letter-spacing:.05em; margin:4px 0 10px; padding-top:12px; border-top:1px dashed rgba(255,176,32,.3);}
+  #ofLinkedList{display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:10px;}
+  .of-linked-card{border-color:rgba(255,176,32,.3);}
+  .of-linked-card:hover{border-color:#ffb020; box-shadow:0 0 12px rgba(255,176,32,.25);}
+  .of-linked-card .of-nome{font-size:13px;}
+  .of-linked-card .of-prominent{font-size:1.05rem;}
+
+  /* ===== Configuratore Card ===== */
+  .of-config-layout{display:grid; grid-template-columns:1fr 260px; gap:24px;}
+  @media (max-width:640px){ .of-config-layout{grid-template-columns:1fr;} }
+  .of-config-fields{display:flex; flex-direction:column; gap:6px;}
+  .of-config-row{display:flex; align-items:center; gap:10px; padding:9px 12px; border:1px solid rgba(143,232,255,.15); border-radius:6px;}
+  .of-link-check-row{display:flex; align-items:center; gap:10px; padding:8px 10px; border-bottom:1px solid rgba(143,232,255,.08);}
+  .of-link-check-row:hover{background:rgba(143,232,255,.04);}
+  .of-link-check-row input[type=checkbox]{width:17px; height:17px; accent-color:#ffb020; flex-shrink:0;}
+  .of-link-check-row .oflc-name{font-size:13px; color:#eafcff;}
+  .of-link-check-row .oflc-tag{font-size:10.5px; color:#7fc4dc; text-transform:uppercase; letter-spacing:.03em;}
+  .of-config-row .ofc-label{flex:1; font-size:13.5px; color:#eafcff;}
+  .of-config-row button{background:none; border:none; font-size:16px; cursor:pointer; padding:2px 4px;}
+  .of-config-preview{position:sticky; top:0;}
+  .of-config-preview-label{font-family:'Rajdhani',sans-serif; font-size:12px; color:#7fc4dc; text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px;}
 </style>
 </head>
 <body>
@@ -316,8 +497,8 @@
 <div id="screen-login">
   <div id="login">
     <div class="core-anim" id="core-login"></div>
-    <h1>J.A.R.V.I.S.</h1>
-    <div class="sub">Assistente personale</div>
+    <h1>JARVIS</h1>
+    <div class="sub">Sistema di Automazioni Lavorative</div>
     <form id="login-form" autocomplete="on">
       <div class="field"><label>Identificativo</label><input type="email" id="login-email" name="username" autocomplete="username" required></div>
       <div class="field"><label>Chiave di accesso</label><input type="password" id="login-password" name="password" autocomplete="current-password" required></div>
@@ -332,20 +513,19 @@
 <div id="sidebar">
   <div class="scanline"></div>
   <div class="nav-item active" data-view="home" data-text="Home">Home</div>
-  <div class="nav-item" data-view="contratti" data-text="Contratti telefonici">Contratti telefonici</div>
-  <div class="nav-item" data-view="abbonamenti" data-text="Abbonamenti">Abbonamenti</div>
-  <div class="nav-item" data-view="veicoli" data-text="Veicoli">Veicoli</div>
-  <div class="nav-item" data-view="documenti" data-text="Documenti">Documenti</div>
-  <div class="nav-item" data-view="accessi" data-text="Credenziali">Credenziali</div>
-  <div class="nav-item" data-view="contatti" data-text="Contatti">Contatti</div>
-  <div class="nav-item" data-view="autopapa" data-text="Piano Rientro Jeep Compass">Piano Rientro Jeep Compass</div>
+  <div class="nav-item" data-view="compilatore" data-text="Compilatore Moduli">Compilatore Moduli</div>
+  <div class="nav-item" data-view="offerte" data-text="Dettaglio Tariffe">Dettaglio Tariffe</div>
+  <div class="nav-item" data-view="gestione" data-text="Database Offerte">Database Offerte</div>
+  <div class="nav-item" data-view="comuni" data-text="Comuni Aree Bianche">Comuni Aree Bianche</div>
+  <div class="nav-item" data-view="manuali" data-text="Manuali">Manuali</div>
+  <div class="nav-item" data-view="impostazioni" data-text="Impostazioni">Impostazioni</div>
 </div>
 
 <!-- ===== APP ===== -->
 <div id="app" class="hidden">
   <div class="topbar">
     <button class="hamburger" id="btn-hamburger"><span></span><span></span><span></span></button>
-    <div class="orb" id="topbar-title">J.A.R.V.I.S.</div>
+    <div class="orb" id="topbar-title">JARVIS</div>
     <div class="right">
       <span class="email" id="user-name"></span>
       <span class="logout" id="btn-logout">Esci</span>
@@ -354,305 +534,1542 @@
 
   <!-- HOME -->
   <div id="view-home">
-    <div class="side-mods">
-      <div class="hex-mod" id="mod-time" style="cursor:pointer;">
-        <div class="corner-tick ct-tr"></div><div class="corner-tick ct-bl"></div>
-        <div class="hex-ring"><svg viewBox="0 0 88 88">
-          <circle class="hex-ring-outer" cx="44" cy="44" r="41"/>
-          <g class="hex-ticks" id="mod-time-ticks"></g>
-          <circle class="hex-ring-bg" cx="44" cy="44" r="35"/>
-          <circle class="hex-ring-fg" cx="44" cy="44" r="35" stroke-dasharray="146 74" transform="rotate(-90 44 44)"/>
-          <circle class="hex-ring-accent" cx="44" cy="44" r="28" stroke-dasharray="18 158" transform="rotate(-90 44 44)"/>
-        </svg><div class="hex-val" id="clock">--:--</div></div>
-        <div class="hex-lbl" id="dateStr">—</div>
-      </div>
-    </div>
-
     <div class="center-col">
       <div class="core-anim" id="core-home"></div>
       <div class="welcome" id="welcome-text">bentornato</div>
     </div>
+  </div>
 
-    <div id="alerts-stack">
-      <div id="birthday-popup" class="alert-banner amber">
-        <span class="bp-close" data-close-birthday="1">✕</span>
-        <div class="bp-head"><span class="bp-icon">🎂</span><span class="bp-title">Compleanno oggi</span></div>
-        <div class="bp-names" id="birthday-names"></div>
-      </div>
-      <div id="deadline-popup" class="alert-banner amber">
-        <span class="bp-close" data-close-deadline="1">✕</span>
-        <div class="bp-head"><span class="bp-icon">⚠️</span><span class="bp-title">Scadenze imminenti</span></div>
-        <div class="bp-names" id="deadline-names"></div>
-      </div>
+  <!-- COMPILATORE MODULI -->
+  <div id="view-compilatore" class="hidden">
+<div id="app-root">
+
+
+<div class="wrap">
+  <div class="brandbar">
+    <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="wtGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#FFB169"/>
+          <stop offset="100%" stop-color="#EE6C1F"/>
+        </linearGradient>
+      </defs>
+      <path d="M4 20 C 12 8, 20 8, 24 20 C 28 32, 36 32, 44 20" fill="none" stroke="url(#wtGrad)" stroke-width="5" stroke-linecap="round"/>
+      <path d="M4 30 C 12 20, 18 20, 22 30 C 26 40, 34 40, 44 30" fill="none" stroke="url(#wtGrad)" stroke-width="5" stroke-linecap="round" opacity="0.55"/>
+    </svg>
+    <div>
+      <div class="wordmark"><span class="wind">WIND</span><span class="tre">TRE</span></div>
+      <div class="tagline">STRUMENTI PERSONALI &middot; NON UFFICIALE</div>
     </div>
+  </div>
 
-    <div class="side-mods">
-      <div class="hex-mod" id="mod-compleanni" style="cursor:pointer;">
-        <div class="corner-tick ct-tr"></div><div class="corner-tick ct-bl"></div>
-        <div class="hex-ring"><svg viewBox="0 0 88 88">
-          <circle class="hex-ring-outer" cx="44" cy="44" r="41"/>
-          <g class="hex-ticks" id="mod-compleanni-ticks"></g>
-          <circle class="hex-ring-bg" cx="44" cy="44" r="35"/>
-          <circle class="hex-ring-fg" cx="44" cy="44" r="35" stroke-dasharray="100 120" transform="rotate(-90 44 44)"/>
-          <circle class="hex-ring-accent" cx="44" cy="44" r="28" stroke-dasharray="16 160" transform="rotate(-90 44 44)"/>
-        </svg><div class="hex-val" id="compleanni-count">0</div></div>
-        <div class="hex-lbl">Compleanni 30gg</div>
+    <div class="cf-stepper" id="cfStepper">
+    <div class="cf-step-dot active" data-step="1"><span class="cf-step-num">1</span>Modulo</div>
+    <div class="cf-step-dot" data-step="2"><span class="cf-step-num">2</span>Dati</div>
+    <div class="cf-step-dot" data-step="3"><span class="cf-step-num">3</span>Firma</div>
+    <div class="cf-step-dot" data-step="4"><span class="cf-step-num">4</span>Scarica</div>
+  </div>
+
+  <!-- ===== STEP 1: scelta modulo + anteprima + descrizione ===== -->
+  <div class="cf-step-panel active" id="cfStep1">
+    <div class="cf-step1-layout">
+      <div class="cf-module-list" id="moduleGrid">
+        <button type="button" class="module-card" data-mode="mobile">Recesso Mobile</button>
+        <button type="button" class="module-card" data-mode="micro">Recesso Biz Mobile</button>
+        <button type="button" class="module-card" data-mode="fisso">Recesso Fisso</button>
+        <button type="button" class="module-card" data-mode="cessione">Subentro</button>
+        <button type="button" class="module-card" data-mode="morte">Autodich Cert. Morte</button>
+        <button type="button" class="module-card" data-mode="decesso">Autodich Atto Notorio</button>
+        <button type="button" class="module-card" data-mode="energy">Att. Utenza Energy</button>
+        <button type="button" class="module-card" data-mode="firmadoc">Firma Doc</button>
+        <button type="button" class="module-card" data-mode="oltresogliasingolo">Oltresoglia Singolo</button>
+        <button type="button" class="module-card" data-mode="oltresoglia10sim">Oltresoglia 10 SIM</button>
       </div>
-    </div>
 
-    <div class="side-mods">
-      <div class="hex-mod" id="mod-weather" style="cursor:pointer;">
-        <div class="corner-tick ct-tr"></div><div class="corner-tick ct-bl"></div>
-        <div class="hex-ring"><svg viewBox="0 0 88 88">
-          <circle class="hex-ring-outer" cx="44" cy="44" r="41"/>
-          <g class="hex-ticks" id="mod-weather-ticks"></g>
-          <circle class="hex-ring-bg" cx="44" cy="44" r="35"/>
-          <circle class="hex-ring-fg" cx="44" cy="44" r="35" stroke-dasharray="120 100" transform="rotate(-90 44 44)"/>
-          <circle class="hex-ring-accent" cx="44" cy="44" r="28" stroke-dasharray="14 162" transform="rotate(-90 44 44)"/>
-        </svg><div class="hex-val" id="weather-temp">—</div></div>
-        <div class="hex-lbl" id="weather-loc">Meteo</div>
+      <div class="cf-detail-panel">
+        <div class="cf-detail-title" id="cfDetailTitle">Seleziona un modulo</div>
+
+        <div id="cfDescView">
+          <div class="cf-detail-desc placeholder" id="cfDescText">Scegli un modulo dall'elenco per vedere l'anteprima e la descrizione.</div>
+          <button type="button" class="linkbtn hidden" id="cfDescEditBtn" style="margin-top:6px;">&#9998; Modifica descrizione</button>
+        </div>
+        <div id="cfDescEditForm" class="hidden">
+          <textarea class="cf-desc-textarea" id="cfDescTextarea" placeholder="Descrizione del modulo..."></textarea>
+          <div class="actions" style="margin-top:8px;">
+            <button type="button" class="btn-hud" id="cfDescSave">Salva</button>
+            <button type="button" class="btn-hud ghost" id="cfDescCancel">Annulla</button>
+          </div>
+        </div>
+
+        <div class="cf-preview-box" id="blankPreviewContainer"><p class="sub cf-empty-hint">Seleziona un modulo per vedere l'anteprima</p></div>
+
+        <div class="actions">
+          <button type="button" class="btn-hud accent" id="cfStep1Next" disabled>Avanti &rarr; Compila i dati</button>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- CONTRATTI -->
-  <div id="view-contratti" class="hidden">
-    <div class="panel">
-      <div class="panel-head">
-        <div class="title">◈ contratti telefonici</div>
-        <div class="total-badge">Totale mensile <span class="amount" id="contratti-total-value">€ 0.00</span></div>
-        <div class="panel-actions">
-          <button class="btn small ghost" id="btn-export-contratti">Esporta PDF</button>
-          <button class="btn small ghost" id="btn-gestisci-campi">Gestisci campi</button>
-          <button class="btn small" id="btn-nuovo-contratto">+ Nuovo contratto</button>
+  <!-- ===== STEP 2: compilazione dati ===== -->
+  <div class="cf-step-panel" id="cfStep2">
+    <div class="cf-progress-wrap" id="cfProgressWrap">
+      <div class="cf-progress-label"><span>Avanzamento compilazione</span><span id="cfProgressText">0 / 0 campi</span></div>
+      <div class="cf-progress-track"><div class="cf-progress-fill" id="cfProgressFill"></div></div>
+    </div>
+
+    <div class="headercard hidden" id="formArea">
+      <h1 id="formTitle">Richiesta di recesso &mdash; contratto mobile privato</h1>
+      <p class="sub" id="formSub">Compila i campi.</p>
+    </div>
+
+    <div class="row hidden" id="moduleSelectRow">
+      <div class="field wide">
+        <label>Modulo da compilare</label>
+        <select id="moduleSelect">
+          <option value="mobile">Recesso Mobile</option>
+          <option value="micro">Recesso Biz Mobile</option>
+          <option value="fisso">Recesso Fisso</option>
+          <option value="cessione">Subentro</option>
+          <option value="morte">Autodich Cert. Morte</option>
+          <option value="decesso">Autodich Atto Notorio</option>
+          <option value="energy">Att. Utenza Energy</option>
+          <option value="firmadoc">Firma Doc</option>
+          <option value="oltresogliasingolo">Oltresoglia Singolo</option>
+          <option value="oltresoglia10sim">Oltresoglia 10 SIM</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="cf-step2-layout">
+    <div class="cf-step2-fields">
+<div id="panel-mobile" class="tab-panel">
+
+  <fieldset>
+    <legend>Intestatario</legend>
+    <div class="row">
+      <div class="field wide">
+        <label>Nome e cognome intestatario SIM/linea <span class="req">*</span></label>
+        <input type="text" id="nome_cognome" placeholder="Mario Rossi">
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Codice fiscale <span class="req">*</span></label>
+        <input type="text" id="codice_fiscale" maxlength="16" style="text-transform:uppercase" placeholder="RSSMRA80A01L219K">
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Documento d'identit&agrave; &mdash; tipo</label>
+        <input type="text" id="doc_tipo" placeholder="Carta d'identit&agrave;">
+      </div>
+      <div class="field">
+        <label>Documento d'identit&agrave; &mdash; numero</label>
+        <input type="text" id="doc_numero" placeholder="AB1234567">
+      </div>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Recapiti</legend>
+    <div class="row">
+      <div class="field">
+        <label>Numero del titolare della linea</label>
+        <input type="text" id="numero_titolare" placeholder="333 1234567">
+      </div>
+      <div class="field">
+        <label>Recapito telefonico alternativo</label>
+        <input type="text" id="recapito_alternativo" placeholder="Per eventuali chiarimenti">
+      </div>
+    </div>
+    <div class="row">
+      <div class="field" style="flex:2 1 260px">
+        <label>Indirizzo di residenza &mdash; via</label>
+        <input type="text" id="indirizzo_via" placeholder="Via Roma">
+      </div>
+      <div class="field narrow">
+        <label>Numero civico</label>
+        <input type="text" id="indirizzo_numero" placeholder="10">
+      </div>
+      <div class="field">
+        <label>Citt&agrave;</label>
+        <input type="text" id="indirizzo_citta" placeholder="Torino">
+      </div>
+    </div>
+    <div class="row">
+      <div class="field narrow">
+        <label>Provincia</label>
+        <input type="text" id="provincia" maxlength="2" style="text-transform:uppercase" placeholder="TO">
+      </div>
+      <div class="field narrow">
+        <label>CAP</label>
+        <input type="text" id="cap" maxlength="5" placeholder="10100">
+      </div>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Recesso richiesto</legend>
+    <div class="row">
+      <div class="field wide">
+        <label>Utenza/e oggetto della richiesta <span class="req">*</span></label>
+        <input type="text" id="utenza" placeholder="333 9998888">
+      </div>
+    </div>
+    <div class="row">
+      <div class="field wide">
+        <label style="margin-bottom:2px">Motivo</label>
+        <div class="radio-group">
+          <label class="radio-opt"><input type="radio" name="motivo" value="cb_richiesta_recesso" checked> Richiesta di recesso</label>
+          <label class="radio-opt"><input type="radio" name="motivo" value="cb_diritto_modifiche"> Diritto di recesso per modifiche contrattuali</label>
+          <label class="radio-opt"><input type="radio" name="motivo" value="cb_recesso_14gg"> Richiesta di recesso entro 14 giorni</label>
         </div>
       </div>
-      <div id="contratti-table-wrap">
-        <table id="contratti-table">
-          <thead><tr id="contratti-thead-row"></tr></thead>
-          <tbody id="contratti-tbody"></tbody>
-        </table>
-        <div id="contratti-empty" class="hidden">Nessun contratto salvato. Usa "+ Nuovo contratto" per iniziare.</div>
+    </div>
+    <div class="row">
+      <div class="field wide">
+        <label style="margin-bottom:2px">Modalit&agrave; pagamento rate residue (se dovute)</label>
+        <div class="radio-group">
+          <label class="radio-opt"><input type="radio" name="pagamento" value="cb_pagamento_rateizzato"> Pagamento rateizzato</label>
+          <label class="radio-opt"><input type="radio" name="pagamento" value="cb_pagamento_unica" checked> Pagamento in unica soluzione</label>
+        </div>
+      </div>
+    </div>
+  </fieldset>
+  </div>
+<div id="panel-micro" class="tab-panel" data-hidden="true">
+    <fieldset>
+      <legend>Intestatario (Professionista)</legend>
+      <div class="row">
+        <div class="field wide"><label>Ragione Sociale <span class="req">*</span></label><input type="text" id="mm_ragione_sociale" placeholder="Rossi Costruzioni S.r.l."></div>
+        <div class="field"><label>Partita IVA</label><input type="text" id="mm_partita_iva"></div>
+      </div>
+      <div class="row">
+        <div class="field wide"><label>Referente Legale/Delegato</label><input type="text" id="mm_referente_legale"></div>
+      </div>
+      <div class="row">
+        <div class="field wide"><label>Il/La Rappresentante Legale <span class="req">*</span></label><input type="text" id="mm_rappresentante_legale" placeholder="Mario Rossi"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Codice fiscale <span class="req">*</span></label><input type="text" id="mm_codice_fiscale" maxlength="16" style="text-transform:uppercase"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Documento d'identit&agrave; &mdash; tipo</label><input type="text" id="mm_doc_tipo"></div>
+        <div class="field"><label>Documento d'identit&agrave; &mdash; numero</label><input type="text" id="mm_doc_numero"></div>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Recapiti</legend>
+      <div class="row">
+        <div class="field"><label>Numero del Rappresentante Legale</label><input type="text" id="mm_numero_rappresentante" placeholder="333 1234567"></div>
+        <div class="field"><label>Recapito telefonico Referente Delegato</label><input type="text" id="mm_recapito_alternativo"></div>
+      </div>
+      <div class="row">
+        <div class="field" style="flex:2 1 260px"><label>Indirizzo di residenza &mdash; via</label><input type="text" id="mm_indirizzo_via"></div>
+        <div class="field narrow"><label>Numero</label><input type="text" id="mm_indirizzo_numero"></div>
+        <div class="field"><label>Citt&agrave;</label><input type="text" id="mm_indirizzo_citta"></div>
+      </div>
+      <div class="row">
+        <div class="field narrow"><label>Provincia</label><input type="text" id="mm_provincia" maxlength="2" style="text-transform:uppercase"></div>
+        <div class="field narrow"><label>CAP</label><input type="text" id="mm_cap" maxlength="5"></div>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Recesso richiesto</legend>
+      <div class="row">
+        <div class="field wide"><label>Utenza/e oggetto della richiesta <span class="req">*</span></label><input type="text" id="mm_utenza" placeholder="333 9998888"></div>
+      </div>
+      <div class="row">
+        <div class="field wide">
+          <div class="radio-group">
+            <label class="radio-opt"><input type="radio" name="mm_motivo" value="cb_richiesta_recesso" checked> Richiesta di recesso</label>
+            <label class="radio-opt"><input type="radio" name="mm_motivo" value="cb_diritto_modifiche"> Diritto di recesso per modifiche contrattuali</label>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field wide">
+          <div class="radio-group">
+            <label class="radio-opt"><input type="radio" name="mm_pagamento" value="cb_pagamento_rateizzato"> Pagamento rateizzato</label>
+            <label class="radio-opt"><input type="radio" name="mm_pagamento" value="cb_pagamento_unica" checked> Pagamento in unica soluzione</label>
+          </div>
+        </div>
+      </div>
+    </fieldset>
+  </div>
+<div id="panel-fisso" class="tab-panel" data-hidden="true">
+    <fieldset>
+      <legend>Intestatario</legend>
+      <div class="row">
+        <div class="field wide">
+          <label>Nome e cognome intestatario linea <span class="req">*</span></label>
+          <input type="text" id="f_nome_cognome" placeholder="Mario Rossi">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Codice fiscale <span class="req">*</span></label>
+          <input type="text" id="f_codice_fiscale" maxlength="16" style="text-transform:uppercase" placeholder="RSSMRA80A01L219K">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Documento d'identit&agrave; &mdash; tipo</label>
+          <input type="text" id="f_doc_tipo" placeholder="Carta d'identit&agrave;">
+        </div>
+        <div class="field">
+          <label>Documento d'identit&agrave; &mdash; numero</label>
+          <input type="text" id="f_doc_numero" placeholder="AB1234567">
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Recapiti</legend>
+      <div class="row">
+        <div class="field">
+          <label>Numero del titolare della linea</label>
+          <input type="text" id="f_numero_titolare" placeholder="0142 123456">
+        </div>
+        <div class="field">
+          <label>Recapito telefonico alternativo</label>
+          <input type="text" id="f_recapito_alternativo" placeholder="Per eventuali chiarimenti">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field" style="flex:2 1 260px">
+          <label>Indirizzo di residenza &mdash; via</label>
+          <input type="text" id="f_indirizzo_via" placeholder="Via Roma">
+        </div>
+        <div class="field narrow">
+          <label>Numero civico</label>
+          <input type="text" id="f_indirizzo_numero" placeholder="10">
+        </div>
+        <div class="field">
+          <label>Citt&agrave;</label>
+          <input type="text" id="f_indirizzo_citta" placeholder="Torino">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field narrow">
+          <label>Provincia</label>
+          <input type="text" id="f_provincia" maxlength="2" style="text-transform:uppercase" placeholder="TO">
+        </div>
+        <div class="field narrow">
+          <label>CAP</label>
+          <input type="text" id="f_cap" maxlength="5" placeholder="10100">
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Recesso richiesto</legend>
+      <div class="row">
+        <div class="field wide">
+          <label>Utenza/e oggetto della richiesta <span class="req">*</span></label>
+          <input type="text" id="f_utenza" placeholder="0142 987654">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field wide">
+          <label style="margin-bottom:2px">Motivo</label>
+          <div class="radio-group">
+            <label class="radio-opt"><input type="radio" name="f_motivo" value="cb_richiesta_recesso" checked> Richiesta di recesso</label>
+            <label class="radio-opt"><input type="radio" name="f_motivo" value="cb_diritto_modifiche"> Diritto di recesso per modifiche contrattuali</label>
+            <label class="radio-opt"><input type="radio" name="f_motivo" value="cb_recesso_14gg"> Richiesta di recesso entro 14 giorni</label>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field wide">
+          <label style="margin-bottom:2px">Modalit&agrave; con cui recedere dal servizio <span class="req">*</span></label>
+          <div class="radio-group">
+            <label class="radio-opt"><input type="radio" name="f_modalita" value="cb_cessazione"> Con cessazione definitiva della linea e perdita del numero</label>
+            <label class="radio-opt"><input type="radio" name="f_modalita" value="cb_portabilita"> Con portabilit&agrave; verso altro operatore tramite codice di migrazione</label>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field wide">
+          <label style="margin-bottom:2px">Modalit&agrave; pagamento rate residue (se dovute)</label>
+          <div class="radio-group">
+            <label class="radio-opt"><input type="radio" name="f_pagamento" value="cb_pagamento_rateizzato"> Pagamento rateizzato</label>
+            <label class="radio-opt"><input type="radio" name="f_pagamento" value="cb_pagamento_unica" checked> Pagamento in unica soluzione</label>
+          </div>
+        </div>
+      </div>
+    </fieldset>
+  </div>
+<div id="panel-morte" class="tab-panel" data-hidden="true">
+    <fieldset>
+      <legend>Dichiarante</legend>
+      <div class="row">
+        <div class="field wide">
+          <label>Nome e cognome dichiarante <span class="req">*</span></label>
+          <input type="text" id="m_nome_cognome" placeholder="Mario Rossi">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Codice fiscale <span class="req">*</span></label><input type="text" id="m_cf" maxlength="16" style="text-transform:uppercase"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Comune di nascita</label><input type="text" id="m_comune_nascita"></div>
+        <div class="field narrow"><label>Prov.</label><input type="text" id="m_prov_nascita" maxlength="2" style="text-transform:uppercase"></div>
+        <div class="field narrow"><label>Data di nascita</label><input type="text" id="m_data_nascita" placeholder="gg/mm/aaaa"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Comune di residenza</label><input type="text" id="m_comune_residenza"></div>
+        <div class="field narrow"><label>Prov.</label><input type="text" id="m_prov_residenza" maxlength="2" style="text-transform:uppercase"></div>
+      </div>
+      <div class="row">
+        <div class="field" style="flex:2 1 260px"><label>Via</label><input type="text" id="m_via_residenza"></div>
+        <div class="field narrow"><label>N&deg;</label><input type="text" id="m_civico_residenza"></div>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Dichiarazione di decesso</legend>
+      <div class="row">
+        <div class="field wide"><label>Nome e cognome del deceduto/a <span class="req">*</span></label><input type="text" id="m_nome_deceduto"></div>
+      </div>
+      <div class="row">
+        <div class="field wide"><label>Grado di parentela</label><input type="text" id="m_grado_parentela" placeholder="es. figlio/a, coniuge..."></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Data del decesso <span class="req">*</span></label><input type="text" id="m_data_decesso" placeholder="gg/mm/aaaa"></div>
+      </div>
+      <div class="row">
+        <div class="field wide"><label>Luogo e data della dichiarazione</label><input type="text" id="m_luogo_data" placeholder="Torino, 15/07/2026"></div>
+      </div>
+    </fieldset>
+  </div>
+<div id="panel-decesso" class="tab-panel" data-hidden="true">
+    <fieldset>
+      <legend>Intestazione lettera</legend>
+      <div class="row">
+        <div class="field narrow"><label>Data lettera</label><input type="text" id="d_data_lettera" placeholder="gg/mm/aaaa"></div>
+        <div class="field wide"><label>Linea/Numero Cliente</label><input type="text" id="d_linea_numero" placeholder="333 1234567"></div>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Erede richiedente</legend>
+      <div class="row">
+        <div class="field wide"><label>Nome e cognome erede <span class="req">*</span></label><input type="text" id="d_nome_cognome_erede"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Comune di nascita</label><input type="text" id="d_comune_nascita_erede"></div>
+        <div class="field narrow"><label>Data di nascita</label><input type="text" id="d_data_nascita_erede" placeholder="gg/mm/aaaa"></div>
+        <div class="field"><label>Codice fiscale <span class="req">*</span></label><input type="text" id="d_cf_erede" maxlength="16" style="text-transform:uppercase"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Comune di residenza</label><input type="text" id="d_comune_residenza_erede"></div>
+        <div class="field" style="flex:2 1 260px"><label>Via</label><input type="text" id="d_via_residenza_erede"></div>
+        <div class="field narrow"><label>N&deg;</label><input type="text" id="d_civico_residenza_erede"></div>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Dichiarazione di decesso</legend>
+      <div class="row">
+        <div class="field narrow"><label>Data del decesso <span class="req">*</span></label><input type="text" id="d_data_decesso" placeholder="gg/mm/aaaa"></div>
+        <div class="field wide"><label>Nome e cognome del titolare deceduto <span class="req">*</span></label><input type="text" id="d_nome_deceduto"></div>
+      </div>
+      <div class="row">
+        <div class="field wide">
+          <label>Altri eredi (se presenti, uno per riga)</label>
+          <input type="text" id="d_altri_eredi_1" placeholder="Nome Cognome" style="margin-bottom:6px">
+          <input type="text" id="d_altri_eredi_2" placeholder="Nome Cognome" style="margin-bottom:6px">
+          <input type="text" id="d_altri_eredi_3" placeholder="Nome Cognome">
+        </div>
+      </div>
+    </fieldset>
+  </div>
+<div id="panel-energy" class="tab-panel" data-hidden="true">
+    <fieldset>
+      <legend>POD/PDR e dichiarante</legend>
+      <div class="row">
+        <div class="field wide"><label>POD/PDR</label><input type="text" id="en_pod_pdr" placeholder="Codice punto di prelievo/riconsegna"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Cognome <span class="req">*</span></label><input type="text" id="en_sott_cognome"></div>
+        <div class="field"><label>Nome <span class="req">*</span></label><input type="text" id="en_sott_nome"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Nato a</label><input type="text" id="en_sott_nato_a"></div>
+        <div class="field narrow"><label>Il</label><input type="text" id="en_sott_data_nascita" placeholder="gg/mm/aaaa"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Codice fiscale <span class="req">*</span></label><input type="text" id="en_sott_cf" maxlength="16" style="text-transform:uppercase"></div>
+      </div>
+      <div class="row">
+        <div class="field wide">
+          <label style="margin-bottom:2px">Chiede una nuova fornitura di</label>
+          <div class="radio-group">
+            <label class="radio-opt"><input type="radio" name="en_tipo_fornitura" value="cb_elettrica" checked> Energia elettrica</label>
+            <label class="radio-opt"><input type="radio" name="en_tipo_fornitura" value="cb_gas"> Gas</label>
+          </div>
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Dati anagrafici del cliente</legend>
+      <div class="row">
+        <div class="field wide"><label>Cognome e nome</label><input type="text" id="en_cliente_cognome_nome"></div>
+        <div class="field"><label>Codice fiscale</label><input type="text" id="en_cliente_cf" style="text-transform:uppercase"></div>
+      </div>
+      <div class="row">
+        <div class="field narrow"><label>Data di nascita</label><input type="text" id="en_cliente_data_nascita" placeholder="gg/mm/aaaa"></div>
+        <div class="field"><label>Luogo</label><input type="text" id="en_cliente_luogo_nascita"></div>
+      </div>
+      <div class="row">
+        <div class="field wide"><label>Cognome e nome/Ragione sociale (se diversa)</label><input type="text" id="en_cliente_ragione_sociale"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Partita IVA</label><input type="text" id="en_cliente_piva"></div>
+        <div class="field"><label>Codice fiscale azienda</label><input type="text" id="en_cliente_cf_azienda" style="text-transform:uppercase"></div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Referente</legend>
+      <div class="row">
+        <div class="field wide"><label>Cognome e nome</label><input type="text" id="en_referente_nome"></div>
+        <div class="field"><label>Codice fiscale</label><input type="text" id="en_referente_cf" style="text-transform:uppercase"></div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Indirizzo di fornitura</legend>
+      <div class="row">
+        <div class="field" style="flex:2 1 260px"><label>Indirizzo</label><input type="text" id="en_fornitura_indirizzo"></div>
+        <div class="field narrow"><label>N&deg;</label><input type="text" id="en_fornitura_civico"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Citt&agrave;</label><input type="text" id="en_fornitura_citta"></div>
+        <div class="field narrow"><label>CAP</label><input type="text" id="en_fornitura_cap" maxlength="5"></div>
+        <div class="field narrow"><label>Provincia</label><input type="text" id="en_fornitura_provincia" maxlength="2" style="text-transform:uppercase"></div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Regolarit&agrave; urbanistica dell'immobile</legend>
+      <p class="sub" style="margin:0 0 10px">Barra solo la casella d'interesse, poi compila i campi corrispondenti se richiesti.</p>
+      <div class="row">
+        <div class="field wide">
+          <div class="radio-group">
+            <label class="radio-opt"><input type="radio" name="en_titolo_edilizio" value="cb_permesso"> Con Permesso di costruire</label>
+            <label class="radio-opt"><input type="radio" name="en_titolo_edilizio" value="cb_scia"> Con Segnalazione Certificata di Inizio Attivit&agrave; (SCIA)</label>
+            <label class="radio-opt"><input type="radio" name="en_titolo_edilizio" value="cb_superscia"> Con SCIA in alternativa al permesso (SUPERSCIA)</label>
+            <label class="radio-opt"><input type="radio" name="en_titolo_edilizio" value="cb_altro"> Con altro titolo edilizio</label>
+            <label class="radio-opt"><input type="radio" name="en_titolo_edilizio" value="cb_prima_1977"> Realizzato prima del 30/01/1977</label>
+            <label class="radio-opt"><input type="radio" name="en_titolo_edilizio" value="cb_nessun_provvedimento"> Nessun provvedimento o comunicazione richiesti</label>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Permesso di costruire &mdash; numero</label><input type="text" id="en_permesso_numero"></div>
+        <div class="field"><label>Comune</label><input type="text" id="en_permesso_comune"></div>
+        <div class="field narrow"><label>Data</label><input type="text" id="en_permesso_data" placeholder="gg/mm/aaaa"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>SCIA &mdash; numero</label><input type="text" id="en_scia_numero"></div>
+        <div class="field"><label>Comune</label><input type="text" id="en_scia_comune"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>SUPERSCIA &mdash; numero</label><input type="text" id="en_superscia_numero"></div>
+        <div class="field"><label>Comune</label><input type="text" id="en_superscia_comune"></div>
+      </div>
+      <div class="row">
+        <div class="field wide"><label>Altro titolo &mdash; descrizione</label><input type="text" id="en_altro_descrizione"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>N&deg; atto</label><input type="text" id="en_altro_atto_numero"></div>
+        <div class="field"><label>Rilasciato da</label><input type="text" id="en_altro_rilasciato_da"></div>
+        <div class="field narrow"><label>Data</label><input type="text" id="en_altro_data" placeholder="gg/mm/aaaa"></div>
+      </div>
+      <p class="sub" style="margin:6px 0 0">La sezione specifica per la Regione Veneto (pagina 2) non &egrave; inclusa qui: barrala a mano sul PDF finale se necessario.</p>
+    </fieldset>
+  </div>
+<div id="panel-oltresogliasingolo" class="tab-panel" data-hidden="true">
+    <fieldset>
+      <legend>Dati Cliente</legend>
+      <div class="row">
+        <div class="field wide"><label>Ragione Sociale/Denominazione <span class="req">*</span></label><input type="text" id="ol_ragione_sociale"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Forma giuridica</label><input type="text" id="ol_forma_giuridica" placeholder="SRL, SPA, SNC..."></div>
+        <div class="field"><label>Partita IVA / Codice Fiscale Azienda <span class="req">*</span></label><input type="text" id="ol_piva_cf"></div>
+      </div>
+      <div class="row">
+        <div class="field narrow"><label>CCIAA</label><input type="text" id="ol_ccia"></div>
+        <div class="field narrow"><label>Prov. CCIAA</label><input type="text" id="ol_prov_ccia"></div>
+        <div class="field narrow"><label>Anno Iscrizione</label><input type="text" id="ol_anno_iscrizione"></div>
+      </div>
+      <div class="row">
+        <div class="field wide"><label>Sede Legale (via)</label><input type="text" id="ol_sede_legale"></div>
+        <div class="field narrow"><label>N&deg;</label><input type="text" id="ol_numero_civico_sede"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Localit&agrave;</label><input type="text" id="ol_localita_sede"></div>
+        <div class="field narrow"><label>CAP</label><input type="text" id="ol_cap_sede"></div>
+        <div class="field"><label>Comune</label><input type="text" id="ol_comune_sede"></div>
+        <div class="field narrow"><label>Prov.</label><input type="text" id="ol_prov_sede"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Settore Merceologico</label><input type="text" id="ol_settore_merceologico"></div>
+        <div class="field narrow"><label>N&deg; Dipendenti</label><input type="text" id="ol_numero_dipendenti"></div>
+        <div class="field"><label>N&deg; telefono fisso (dopo lo 0)</label><input type="text" id="ol_telefono_fisso"></div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Dati del Delegato</legend>
+      <div class="row">
+        <div class="field"><label>Nome</label><input type="text" id="ol_delegato_nome"></div>
+        <div class="field"><label>Cognome <span class="req">*</span></label><input type="text" id="ol_delegato_cognome"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Comune di nascita</label><input type="text" id="ol_delegato_comune_nascita"></div>
+        <div class="field narrow"><label>Prov.</label><input type="text" id="ol_delegato_prov_nascita"></div>
+        <div class="field"><label>Data di nascita</label><input type="text" id="ol_delegato_data_nascita" placeholder="GG/MM/AAAA"></div>
+      </div>
+      <div class="row">
+        <div class="field wide"><label>Indirizzo di residenza</label><input type="text" id="ol_delegato_indirizzo"></div>
+        <div class="field narrow"><label>N&deg;</label><input type="text" id="ol_delegato_civico"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Localit&agrave;</label><input type="text" id="ol_delegato_localita"></div>
+        <div class="field narrow"><label>CAP</label><input type="text" id="ol_delegato_cap"></div>
+        <div class="field"><label>Comune</label><input type="text" id="ol_delegato_comune"></div>
+        <div class="field narrow"><label>Prov.</label><input type="text" id="ol_delegato_prov"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Posizione in Azienda</label><input type="text" id="ol_delegato_posizione" placeholder="DR, PR, AD, VP, SG, AL"></div>
+        <div class="field"><label>Codice Fiscale</label><input type="text" id="ol_delegato_cf"></div>
+      </div>
+      <div class="row">
+        <div class="field narrow"><label>Doc. Identit&agrave; - Tipo</label><input type="text" id="ol_delegato_doc_tipo" placeholder="CI, PA, PS"></div>
+        <div class="field narrow"><label>Data rilascio</label><input type="text" id="ol_delegato_doc_rilascio"></div>
+        <div class="field"><label>Numero documento</label><input type="text" id="ol_delegato_doc_numero"></div>
+        <div class="field narrow"><label>Naz.</label><input type="text" id="ol_delegato_doc_naz"></div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Dati SIM</legend>
+      <p class="sub" style="margin:0 0 12px">Il prefisso &egrave; gi&agrave; stampato sul modulo: inserisci solo le cifre restanti.</p>
+      <div class="row">
+        <div class="field"><label>Numero telefono mobile (dopo il 3)</label><input type="text" id="ol_numero_telefono_mobile"></div>
+        <div class="field"><label>Numero SIM (dopo 893988)</label><input type="text" id="ol_numero_sim"></div>
+      </div>
+    </fieldset>
+  </div>
+<div id="panel-oltresoglia10sim" class="tab-panel" data-hidden="true">
+    <fieldset>
+      <legend>Dati Cliente</legend>
+      <div class="row">
+        <div class="field wide"><label>Ragione Sociale/Denominazione <span class="req">*</span></label><input type="text" id="ol10_ragione_sociale"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Forma giuridica</label><input type="text" id="ol10_forma_giuridica" placeholder="SRL, SPA, SNC..."></div>
+        <div class="field"><label>Partita IVA / Codice Fiscale Azienda <span class="req">*</span></label><input type="text" id="ol10_piva_cf"></div>
+      </div>
+      <div class="row">
+        <div class="field narrow"><label>CCIAA</label><input type="text" id="ol10_ccia"></div>
+        <div class="field narrow"><label>Prov. CCIAA</label><input type="text" id="ol10_prov_ccia"></div>
+        <div class="field narrow"><label>Anno Iscrizione</label><input type="text" id="ol10_anno_iscrizione"></div>
+      </div>
+      <div class="row">
+        <div class="field wide"><label>Sede Legale (via)</label><input type="text" id="ol10_sede_legale"></div>
+        <div class="field narrow"><label>N&deg;</label><input type="text" id="ol10_numero_civico_sede"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Localit&agrave;</label><input type="text" id="ol10_localita_sede"></div>
+        <div class="field narrow"><label>CAP</label><input type="text" id="ol10_cap_sede"></div>
+        <div class="field"><label>Comune</label><input type="text" id="ol10_comune_sede"></div>
+        <div class="field narrow"><label>Prov.</label><input type="text" id="ol10_prov_sede"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Settore Merceologico</label><input type="text" id="ol10_settore_merceologico"></div>
+        <div class="field narrow"><label>N&deg; Dipendenti</label><input type="text" id="ol10_numero_dipendenti"></div>
+        <div class="field"><label>N&deg; telefono fisso (dopo lo 0)</label><input type="text" id="ol10_telefono_fisso"></div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Dati del Delegato</legend>
+      <div class="row">
+        <div class="field"><label>Nome</label><input type="text" id="ol10_delegato_nome"></div>
+        <div class="field"><label>Cognome <span class="req">*</span></label><input type="text" id="ol10_delegato_cognome"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Comune di nascita</label><input type="text" id="ol10_delegato_comune_nascita"></div>
+        <div class="field narrow"><label>Prov.</label><input type="text" id="ol10_delegato_prov_nascita"></div>
+        <div class="field"><label>Data di nascita</label><input type="text" id="ol10_delegato_data_nascita" placeholder="GG/MM/AAAA"></div>
+      </div>
+      <div class="row">
+        <div class="field wide"><label>Indirizzo di residenza</label><input type="text" id="ol10_delegato_indirizzo"></div>
+        <div class="field narrow"><label>N&deg;</label><input type="text" id="ol10_delegato_civico"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Localit&agrave;</label><input type="text" id="ol10_delegato_localita"></div>
+        <div class="field narrow"><label>CAP</label><input type="text" id="ol10_delegato_cap"></div>
+        <div class="field"><label>Comune</label><input type="text" id="ol10_delegato_comune"></div>
+        <div class="field narrow"><label>Prov.</label><input type="text" id="ol10_delegato_prov"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Posizione in Azienda</label><input type="text" id="ol10_delegato_posizione" placeholder="DR, PR, AD, VP, SG, AL"></div>
+        <div class="field"><label>Codice Fiscale</label><input type="text" id="ol10_delegato_cf"></div>
+      </div>
+      <div class="row">
+        <div class="field narrow"><label>Doc. Identit&agrave; - Tipo</label><input type="text" id="ol10_delegato_doc_tipo" placeholder="CI, PA, PS"></div>
+        <div class="field narrow"><label>Data rilascio</label><input type="text" id="ol10_delegato_doc_rilascio"></div>
+        <div class="field"><label>Numero documento</label><input type="text" id="ol10_delegato_doc_numero"></div>
+        <div class="field narrow"><label>Naz.</label><input type="text" id="ol10_delegato_doc_naz"></div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Dati SIM (fino a 10)</legend>
+      <p class="sub" style="margin:0 0 12px">Il prefisso &egrave; gi&agrave; stampato sul modulo: inserisci solo le cifre restanti per ogni SIM che attivi. Lascia vuote le righe che non ti servono.</p>
+      <div class="row">
+        <div class="field"><label>SIM 1 &mdash; Numero (dopo 893988)</label><input type="text" id="ol10_sim1_numero"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>SIM 2 &mdash; Numero (dopo 893988)</label><input type="text" id="ol10_sim2_numero"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>SIM 3 &mdash; Numero (dopo 893988)</label><input type="text" id="ol10_sim3_numero"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>SIM 4 &mdash; Numero (dopo 893988)</label><input type="text" id="ol10_sim4_numero"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>SIM 5 &mdash; Numero (dopo 893988)</label><input type="text" id="ol10_sim5_numero"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>SIM 6 &mdash; Numero (dopo 893988)</label><input type="text" id="ol10_sim6_numero"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>SIM 7 &mdash; Numero (dopo 893988)</label><input type="text" id="ol10_sim7_numero"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>SIM 8 &mdash; Numero (dopo 893988)</label><input type="text" id="ol10_sim8_numero"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>SIM 9 &mdash; Numero (dopo 893988)</label><input type="text" id="ol10_sim9_numero"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>SIM 10 &mdash; Numero (dopo 893988)</label><input type="text" id="ol10_sim10_numero"></div>
+      </div>
+    </fieldset>
+  </div>
+
+<div id="panel-cessione" class="tab-panel" data-hidden="true">
+    <fieldset>
+      <legend>Attuale Intestatario (Cedente)</legend>
+      <div class="row">
+        <div class="field"><label>Nome <span class="req">*</span></label><input type="text" id="c_ced_nome" placeholder="Federico"></div>
+        <div class="field"><label>Cognome <span class="req">*</span></label><input type="text" id="c_ced_cognome" placeholder="Rossi"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Codice fiscale <span class="req">*</span></label><input type="text" id="c_ced_cf" maxlength="16" style="text-transform:uppercase" placeholder="RSSFRC80A01L219K"></div>
+        <div class="field"><label>Partita IVA (se libero prof.)</label><input type="text" id="c_ced_piva"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Recapito telefonico</label><input type="text" id="c_ced_telefono" placeholder="333 1234567"></div>
+      </div>
+      <div class="row">
+        <div class="field wide">
+          <label class="radio-opt" style="font-weight:600"><input type="checkbox" id="c_ced_is_impresa"> Il Cedente agisce come Impresa (compila Ragione Sociale)</label>
+        </div>
+      </div>
+      <div id="c_ced_impresa_block" style="display:none">
+        <div class="row">
+          <div class="field wide"><label>Denominazione/Ragione Sociale</label><input type="text" id="c_ced_impresa_denominazione"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Partita IVA impresa</label><input type="text" id="c_ced_impresa_piva"></div>
+          <div class="field"><label>Recapito telefonico impresa</label><input type="text" id="c_ced_impresa_telefono"></div>
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Nuovo Intestatario (Cessionario)</legend>
+      <div class="row">
+        <div class="field"><label>Nome <span class="req">*</span></label><input type="text" id="c_ces_nome" placeholder="Mario"></div>
+        <div class="field"><label>Cognome <span class="req">*</span></label><input type="text" id="c_ces_cognome" placeholder="Bianchi"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Codice fiscale <span class="req">*</span></label><input type="text" id="c_ces_cf" maxlength="16" style="text-transform:uppercase" placeholder="BNCMRA90A01L219Z"></div>
+        <div class="field"><label>Partita IVA (se libero prof.)</label><input type="text" id="c_ces_piva"></div>
+        <div class="field narrow"><label>Sesso</label>
+          <select id="c_ces_sesso" style="border:1px solid var(--line); border-radius:7px; padding:9px 10px; font-size:14px; background:#fff;">
+            <option value="">&mdash;</option><option value="M">M</option><option value="F">F</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Comune di nascita</label><input type="text" id="c_ces_comune_nascita"></div>
+        <div class="field narrow"><label>Prov.</label><input type="text" id="c_ces_prov_nascita" maxlength="2" style="text-transform:uppercase"></div>
+        <div class="field narrow"><label>Data di nascita</label><input type="text" id="c_ces_data_nascita" placeholder="gg/mm/aaaa"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Recapito telefonico</label><input type="text" id="c_ces_telefono" placeholder="333 1234567"></div>
+      </div>
+      <div class="row">
+        <div class="field narrow"><label>Documento &mdash; data rilascio</label><input type="text" id="c_ces_doc_rilascio" placeholder="gg/mm/aaaa"></div>
+        <div class="field"><label>Documento &mdash; numero</label><input type="text" id="c_ces_doc_numero"></div>
+        <div class="field narrow"><label>Nazionalit&agrave;</label><input type="text" id="c_ces_doc_naz" placeholder="ITA"></div>
+      </div>
+      <div class="row">
+        <div class="field" style="flex:2 1 260px"><label>Indirizzo di residenza</label><input type="text" id="c_ces_indirizzo" placeholder="Via Roma"></div>
+        <div class="field narrow"><label>N&deg;</label><input type="text" id="c_ces_civico"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Localit&agrave;</label><input type="text" id="c_ces_localita"></div>
+        <div class="field narrow"><label>CAP</label><input type="text" id="c_ces_cap" maxlength="5"></div>
+        <div class="field"><label>Comune</label><input type="text" id="c_ces_comune"></div>
+        <div class="field narrow"><label>Prov.</label><input type="text" id="c_ces_prov" maxlength="2" style="text-transform:uppercase"></div>
+      </div>
+      <div class="row">
+        <div class="field wide">
+          <label class="radio-opt" style="font-weight:600"><input type="checkbox" id="c_ces_is_impresa"> Il Cessionario agisce come Impresa (compila Ragione Sociale e Sede Legale)</label>
+        </div>
+      </div>
+      <div id="c_ces_impresa_block" style="display:none">
+        <div class="row">
+          <div class="field wide"><label>Denominazione/Ragione Sociale</label><input type="text" id="c_ces_impresa_denominazione"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Partita IVA impresa</label><input type="text" id="c_ces_impresa_piva"></div>
+          <div class="field"><label>Recapito telefonico impresa</label><input type="text" id="c_ces_impresa_telefono"></div>
+        </div>
+        <p class="sub" style="margin:4px 0 10px">Sede Legale</p>
+        <div class="row">
+          <div class="field" style="flex:2 1 260px"><label>Via</label><input type="text" id="c_ces_sede_legale_via"></div>
+          <div class="field narrow"><label>N&deg;</label><input type="text" id="c_ces_sede_legale_civico"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Localit&agrave;</label><input type="text" id="c_ces_sede_legale_localita"></div>
+          <div class="field narrow"><label>CAP</label><input type="text" id="c_ces_sede_legale_cap" maxlength="5"></div>
+          <div class="field"><label>Comune</label><input type="text" id="c_ces_sede_legale_comune"></div>
+          <div class="field narrow"><label>Prov.</label><input type="text" id="c_ces_sede_legale_prov" maxlength="2" style="text-transform:uppercase"></div>
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Numeri di telefono oggetto della cessione</legend>
+      <div class="row">
+        <div class="field wide">
+          <label>Numeri ceduti <span class="req">*</span> (separati da virgola)</label>
+          <input type="text" id="c_numeri_ceduti" placeholder="333 1112223, 333 4445556">
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Modalit&agrave; di pagamento (a cura del Cessionario)</legend>
+      <div class="row">
+        <div class="field wide">
+          <div class="radio-group">
+            <label class="radio-opt"><input type="radio" name="c_pagamento" value="none" checked> Nessuna (da definire)</label>
+            <label class="radio-opt"><input type="radio" name="c_pagamento" value="carta"> Carta di credito</label>
+            <label class="radio-opt"><input type="radio" name="c_pagamento" value="sepa"> Addebito diretto su conto corrente (SEPA)</label>
+            <label class="radio-opt"><input type="radio" name="c_pagamento" value="bollettino"> Bollettino postale</label>
+          </div>
+        </div>
+      </div>
+      <div id="c_sepa_block" style="display:none">
+        <div class="row">
+          <div class="field"><label>Nome Banca/Poste</label><input type="text" id="c_sepa_banca"></div>
+          <div class="field"><label>IBAN <span style="font-weight:400">(senza il prefisso IT, gi&agrave; stampato)</span></label><input type="text" id="c_sepa_iban" placeholder="60X0542811101000000123456"></div>
+        </div>
+        <p class="sub" style="margin:4px 0 10px">Dati del Sottoscrittore del modulo (deve essere una persona fisica)</p>
+        <div class="row">
+          <div class="field"><label>Nome, Cognome</label><input type="text" id="c_sott_nome_cognome"></div>
+          <div class="field"><label>Codice fiscale</label><input type="text" id="c_sott_cf" style="text-transform:uppercase"></div>
+        </div>
+        <div class="row">
+          <div class="field" style="flex:2 1 260px"><label>Indirizzo</label><input type="text" id="c_sott_indirizzo"></div>
+          <div class="field narrow"><label>N&deg;</label><input type="text" id="c_sott_civico"></div>
+        </div>
+        <div class="row">
+          <div class="field narrow"><label>CAP</label><input type="text" id="c_sott_cap" maxlength="5"></div>
+          <div class="field"><label>Comune</label><input type="text" id="c_sott_comune"></div>
+          <div class="field narrow"><label>Prov.</label><input type="text" id="c_sott_prov" maxlength="2" style="text-transform:uppercase"></div>
+          <div class="field"><label>Telefono</label><input type="text" id="c_sott_telefono"></div>
+        </div>
+        <p class="sub" style="margin:4px 0 10px">Intestatario del conto da addebitare (se diverso, altrimenti ripeti gli stessi dati)</p>
+        <div class="row">
+          <div class="field"><label>Denominazione/Nome, Cognome</label><input type="text" id="c_intest_denominazione"></div>
+          <div class="field"><label>Cod. fiscale / P.IVA</label><input type="text" id="c_intest_cf_piva" style="text-transform:uppercase"></div>
+        </div>
+        <div class="row">
+          <div class="field" style="flex:2 1 260px"><label>Indirizzo</label><input type="text" id="c_intest_indirizzo"></div>
+          <div class="field narrow"><label>N&deg;</label><input type="text" id="c_intest_civico"></div>
+        </div>
+        <div class="row">
+          <div class="field narrow"><label>CAP</label><input type="text" id="c_intest_cap" maxlength="5"></div>
+          <div class="field"><label>Comune</label><input type="text" id="c_intest_comune"></div>
+          <div class="field narrow"><label>Prov.</label><input type="text" id="c_intest_prov" maxlength="2" style="text-transform:uppercase"></div>
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Luogo, data e firme</legend>
+      <div class="row">
+        <div class="field"><label>Luogo</label><input type="text" id="c_luogo" placeholder="Casale Monferrato"></div>
+        <div class="field narrow"><label>Data</label><input type="date" id="c_data"></div>
+      </div>
+      <div class="row">
+        <div class="field wide">
+          <label>Firma Cedente <span class="req">*</span></label>
+          <canvas id="sigpadCedente" class="sigpad-canvas"></canvas>
+          <div class="sigrow">
+            <div style="display:flex; gap:16px; align-items:center;">
+              <button class="linkbtn" id="clearsigCedente" type="button">Cancella firma</button>
+              <label class="linkbtn" for="sigCedenteUpload" style="cursor:pointer;">Carica immagine firma&hellip;</label>
+              <input type="file" id="sigCedenteUpload" accept="image/*" style="display:none;">
+            </div>
+            <span class="status" id="sigCedenteStatus"></span>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field wide">
+          <label>Firma Cessionario <span class="req">*</span></label>
+          <canvas id="sigpadCessionario" class="sigpad-canvas"></canvas>
+          <div class="sigrow">
+            <div style="display:flex; gap:16px; align-items:center;">
+              <button class="linkbtn" id="clearsigCessionario" type="button">Cancella firma</button>
+              <label class="linkbtn" for="sigCessionarioUpload" style="cursor:pointer;">Carica immagine firma&hellip;</label>
+              <input type="file" id="sigCessionarioUpload" accept="image/*" style="display:none;">
+            </div>
+            <span class="status" id="sigCessionarioStatus"></span>
+          </div>
+        </div>
+      </div>
+    </fieldset>
+
+    <div class="actions">
+      <button id="previewCessione" type="button">1. Compila e genera anteprima</button>
+      <span class="status" id="statusCessione"></span>
+    </div>
+
+    <fieldset id="cessioneSignFieldset" style="display:none; margin-top:18px">
+      <legend>Posiziona le firme sul documento</legend>
+      <p class="sub" style="margin:0 0 12px">Il modulo qui sotto &egrave; gi&agrave; compilato, date incluse. Scegli chi stai firmando e clicca dove serve: comparir&agrave; l&rsquo;immagine vera della firma, che puoi <strong>trascinare</strong> per spostarla e ridimensionare tirando il puntino arancione. Il modulo richiede pi&ugrave; firme a testa: aggiungine quante servono.</p>
+      <div style="display:flex; gap:8px; margin:6px 0 8px; flex-wrap:wrap;">
+        <button type="button" class="tab-btn active" id="placeBtnCedente" style="flex:0 0 auto; padding:8px 14px; font-size:12.5px;">Sto firmando: Cedente</button>
+        <button type="button" class="tab-btn" id="placeBtnCessionario" style="flex:0 0 auto; padding:8px 14px; font-size:12.5px;">Sto firmando: Cessionario</button>
+        <button type="button" class="linkbtn" id="clearAllMarks">Cancella tutte le firme</button>
+      </div>
+      <div id="sigPreviewCessione"></div>
+      <div class="actions" style="margin-top:14px">
+        <button id="generateCessione" type="button" disabled>2. Scarica PDF firmato</button>
+        <span class="status" id="statusCessioneFinal"></span>
+      </div>
+    </fieldset>
+  </div>
+<div id="panel-firmadoc" class="tab-panel" data-hidden="true">
+    <fieldset>
+      <legend>Firma Doc &mdash; firma un PDF qualsiasi</legend>
+      <p class="sub" style="margin:0 0 14px">Carica un PDF qualsiasi (non legato a nessun modulo), scegli firma e data, e apponile dove e quante volte vuoi.</p>
+      <div class="row">
+        <div class="field wide">
+          <label for="fdUpload">File PDF da firmare</label>
+          <input type="file" id="fdUpload" accept="application/pdf">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field narrow">
+          <label>Data</label>
+          <input type="date" id="fd_data">
+        </div>
+      </div>
+      <div class="field wide">
+        <label>Firma &mdash; disegna qui con mouse o dito, oppure carica un'immagine</label>
+        <canvas id="sigpadFirmaDoc" class="sigpad-canvas"></canvas>
+        <div class="sigrow">
+          <div style="display:flex; gap:16px; align-items:center;">
+            <button class="linkbtn" id="clearsigFirmaDoc" type="button">Cancella firma</button>
+            <label class="linkbtn" for="sigFirmaDocUpload" style="cursor:pointer;">Carica immagine firma&hellip;</label>
+            <input type="file" id="sigFirmaDocUpload" accept="image/*" style="display:none;">
+          </div>
+          <span class="status" id="sigFirmaDocStatus"></span>
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset id="fdSignFieldset" style="display:none">
+      <legend>Posiziona firma e data</legend>
+      <p class="sub" style="margin:0 0 12px">Scegli cosa stai posizionando e clicca su ogni pagina. La firma comparir&agrave; come immagine vera: trascinala per spostarla e tira il puntino arancione per ridimensionarla. La data resta un testo da posizionare col click (regola qui sotto la dimensione).</p>
+      <div style="display:flex; gap:8px; margin:6px 0 8px; flex-wrap:wrap;">
+        <button type="button" class="tab-btn active" id="placeBtnFdFirma" style="flex:0 0 auto; padding:8px 14px; font-size:12.5px;">Sto posizionando: Firma</button>
+        <button type="button" class="tab-btn" id="placeBtnFdData" style="flex:0 0 auto; padding:8px 14px; font-size:12.5px;">Sto posizionando: Data</button>
+        <button type="button" class="linkbtn" id="clearFdPositions">Cancella tutti i punti</button>
+      </div>
+      <div class="row">
+        <div class="field narrow">
+          <label>Dimensione data <span id="fdDateSizeVal">14</span>pt</label>
+          <input type="range" id="fdDateSize" min="6" max="30" value="14" style="width:100%">
+        </div>
+      </div>
+      <div id="fdPages"></div>
+      <div class="actions" style="margin-top:14px">
+        <button id="generateFd" type="button">Scarica PDF firmato</button>
+        <span class="status" id="fdStatus"></span>
+      </div>
+    </fieldset>
+  </div>
+    </div>
+    <div class="cf-step2-preview">
+      <div class="cf-preview-sticky">
+        <div class="cf-detail-title" style="font-size:14px;">Anteprima in tempo reale</div>
+        <div class="cf-preview-box" id="cfLivePreview"><p class="sub cf-empty-hint">L'anteprima si aggiorna mentre scrivi (non disponibile per Subentro e Firma Doc).</p></div>
+      </div>
+    </div>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn-hud ghost" id="cfStep2Back">&larr; Cambia modulo</button>
+      <button type="button" class="btn-hud accent" id="cfStep2Next">Avanti &rarr; Data e firma</button>
+      <span class="status" id="cfStep2Status"></span>
+    </div>
+  </div>
+
+  <!-- ===== STEP 3: firma e data ===== -->
+  <div class="cf-step-panel" id="cfStep3">
+<div class="cf-choice-row" id="cfChoiceRow">
+    <div class="cf-choice-card" id="cfChoiceDownload">
+      <div class="cf-choice-title">Scarica cos&igrave;</div>
+      <div class="cf-choice-sub">Modulo compilato con i tuoi dati, senza data n&eacute; firma.</div>
+    </div>
+    <div class="cf-choice-card" id="cfChoiceSign">
+      <div class="cf-choice-title">Aggiungi data e firma</div>
+      <div class="cf-choice-sub">Inserisci data e/o firma prima di scaricare il PDF definitivo.</div>
+    </div>
+  </div>
+
+  <div id="panel-datafirma-standard" class="hidden">
+    <fieldset>
+      <legend>Data e firma</legend>
+      <div class="row" style="margin-bottom:10px;">
+        <label class="radio-opt"><input type="checkbox" id="optIncludiData" checked> Includi la data</label>
+        <label class="radio-opt"><input type="checkbox" id="optIncludiFirma" checked> Includi la firma</label>
+      </div>
+      <div class="row" id="dataFieldRow">
+        <div class="field narrow">
+          <label>Data</label>
+          <input type="date" id="data">
+        </div>
+      </div>
+      <div class="field wide" id="firmaFieldWrap">
+        <label>Firma &mdash; disegna qui con mouse o dito, oppure carica un'immagine</label>
+        <canvas id="sigpad" class="sigpad-canvas"></canvas>
+        <div class="sigrow">
+          <div style="display:flex; gap:16px; align-items:center;">
+            <button class="linkbtn" id="clearsig" type="button">Cancella firma</button>
+            <label class="linkbtn" for="sigupload" style="cursor:pointer;">Carica immagine firma&hellip;</label>
+            <input type="file" id="sigupload" accept="image/*" style="display:none;">
+          </div>
+          <span class="status" id="sigstatus"></span>
+        </div>
+      </div>
+    </fieldset>
+
+    <div class="actions">
+      <button id="previewStandard" type="button" class="btn-hud accent">Continua</button>
+      <span class="status" id="status"></span>
+    </div>
+
+    <fieldset id="standardSignFieldset" style="display:none; margin-top:18px">
+      <legend>Posiziona la firma sul documento</legend>
+      <p class="sub" style="margin:0 0 12px">Il modulo qui sotto &egrave; gi&agrave; compilato. Clicca dove vuoi mettere la firma: comparir&agrave; l&rsquo;immagine vera, che puoi <strong>trascinare</strong> per spostarla e ridimensionare tirando il puntino arancione. Puoi aggiungerne quante ne servono.</p>
+      <div style="display:flex; gap:8px; margin:6px 0 8px; flex-wrap:wrap;">
+        <button type="button" class="linkbtn" id="clearAllMarksStandard">Cancella tutte le firme</button>
+      </div>
+      <div id="sigPreviewMobileFisso"></div>
+      <div class="actions" style="margin-top:14px">
+        <button id="generate" type="button" class="btn-hud accent" disabled>Scarica PDF definitivo</button>
+        <span class="status" id="statusStandardFinal"></span>
+      </div>
+    </fieldset>
+  </div>
+
+  <fieldset style="margin-top:28px">
+    <legend>Firma anche i documenti allegati</legend>
+    <p class="sub" style="margin:0 0 14px">Carica il PDF con le copie dei documenti (es. carta d'identit&agrave; + codice fiscale). Scegli cosa stai posizionando e clicca su ogni pagina dove serve &mdash; firma e data sono indipendenti, le metti tu dove vuoi, non una sopra l'altra.</p>
+    <div class="row">
+      <div class="field wide">
+        <label for="docupload">File PDF dei documenti</label>
+        <input type="file" id="docupload" accept="application/pdf">
+      </div>
+    </div>
+    <div style="display:none; gap:8px; margin:6px 0 8px; flex-wrap:wrap;" id="docPlaceToggle">
+      <button type="button" class="tab-btn active" id="placeBtnDocFirma" style="flex:0 0 auto; padding:8px 14px; font-size:12.5px;">Sto posizionando: Firma</button>
+      <button type="button" class="tab-btn" id="placeBtnDocData" style="flex:0 0 auto; padding:8px 14px; font-size:12.5px;">Sto posizionando: Data</button>
+    </div>
+    <div id="docPages"></div>
+    <div class="row" id="docSizeControls" style="display:none">
+      <div class="field narrow">
+        <label>Dimensione data <span id="docDateSizeVal">16</span>pt</label>
+        <input type="range" id="docDateSize" min="8" max="30" value="16" style="width:100%">
+      </div>
+    </div>
+    <div class="actions" id="docActions" style="display:none">
+      <button id="generateDocs" type="button" class="btn-hud">Genera documenti firmati</button>
+      <button class="linkbtn" id="clearDocPositions" type="button">Cancella posizioni</button>
+      <span class="status" id="docStatus"></span>
+    </div>
+  </fieldset>
+
+    <div class="actions">
+      <button type="button" class="btn-hud ghost" id="cfStep3Back">&larr; Torna ai dati</button>
+    </div>
+  </div>
+
+  <!-- ===== STEP 4: fine ===== -->
+  <div class="cf-step-panel" id="cfStep4">
+    <div class="cf-detail-panel" style="text-align:center; align-items:center;">
+      <div class="cf-detail-title">Fatto</div>
+      <p class="cf-detail-desc" id="cfStep4Msg">Il PDF &egrave; stato scaricato.</p>
+      <div class="actions" style="justify-content:center;">
+        <button type="button" class="btn-hud ghost" id="cfStep4Back">&larr; Torna indietro per modificare</button>
+        <button type="button" class="btn-hud accent" id="cfStep4Restart">Compila un altro modulo</button>
       </div>
     </div>
   </div>
 
-  <!-- ABBONAMENTI -->
-  <div id="view-abbonamenti" class="hidden">
+  <p class="footer-note">Strumento personale per uso interno &mdash; non un servizio ufficiale WindTre.<br>Tutto avviene nel browser: nessun dato lascia questo dispositivo.</p>
+</div>
+
+</div>
+  </div>
+
+  <!-- ANALIZZATORE OFFERTE -->
+  <div id="view-offerte" class="hidden">
+    <div class="of-search-row">
+      <input type="text" id="ofSearchInput" class="of-search-input" placeholder="Cerca per nome, dettagli, badge, prezzo&hellip;">
+    </div>
+    <div class="of-tabs-bar">
+      <button type="button" class="of-tab-btn active" id="ofTabTariffe">Tariffe</button>
+      <button type="button" class="of-tab-btn" id="ofTabOpzioni">Opzioni</button>
+      <button type="button" class="of-tab-btn" id="ofTabConfig">Configurazioni</button>
+    </div>
+    <div class="of-toolbar">
+      <div class="of-filter-group" id="ofCatFilterGroup">
+        <span class="of-filter-label">Categoria</span>
+        <button type="button" class="of-chip" data-filter-cat="consumer">Consumer</button>
+        <button type="button" class="of-chip" data-filter-cat="business">Business</button>
+      </div>
+      <div class="of-filter-group hidden" id="cfgCatFilterGroup">
+        <span class="of-filter-label">Categoria</span>
+        <button type="button" class="of-chip" data-cfg-filter-cat="consumer">Consumer</button>
+        <button type="button" class="of-chip" data-cfg-filter-cat="business">Business</button>
+      </div>
+      <div class="of-filter-group" id="ofTipoFilterGroup">
+        <span class="of-filter-label">Tipo</span>
+        <button type="button" class="of-chip" data-filter-tipo="mobile">Mobile</button>
+        <button type="button" class="of-chip" data-filter-tipo="fisso">Fisso</button>
+      </div>
+      <div class="of-filter-group" style="margin-left:auto;">
+        <button type="button" class="of-chip of-manage-btn" id="ofReorderBtn">&#8597; Riordina</button>
+        <button type="button" class="of-chip of-manage-btn hidden" id="cfgReorderBtn">&#8597; Riordina</button>
+        <button type="button" class="of-chip of-manage-btn" id="ofAddNewCard">+ Nuova tariffa</button>
+        <button type="button" class="of-chip of-manage-btn hidden" id="cfgAddNewCard">+ Nuova configurazione</button>
+      </div>
+      <div class="of-filter-group hidden" id="ofBadgeFilterGroup">
+        <span class="of-filter-label">Badge</span>
+      </div>
+    </div>
+
     <div class="panel">
       <div class="panel-head">
-        <div class="title">◈ abbonamenti</div>
-        <div class="total-badge">Totale mensile <span class="amount" id="abbonamenti-total-value">€ 0.00</span></div>
-        <div class="panel-actions">
-          <button class="btn small ghost" id="btn-export-abbonamenti">Esporta PDF</button>
-          <button class="btn small ghost" id="btn-gestisci-campi-abbonamenti">Gestisci campi</button>
-          <button class="btn small" id="btn-nuovo-abbonamento">+ Nuovo abbonamento</button>
-        </div>
+        <div class="title">◈ dettaglio tariffe</div>
       </div>
-      <div id="abbonamenti-table-wrap">
-        <table id="abbonamenti-table">
-          <thead><tr id="abbonamenti-thead-row"></tr></thead>
-          <tbody id="abbonamenti-tbody"></tbody>
-        </table>
-        <div id="abbonamenti-empty" class="hidden">Nessun abbonamento salvato. Usa "+ Nuovo abbonamento" per iniziare.</div>
+      <div class="of-grid" id="ofGrid">
+        <p class="sub" id="ofEmptyMsg">Nessuna tariffa trovata. Usa "+ Nuova tariffa" per aggiungerne.</p>
+      </div>
+      <div class="of-grid hidden" id="cfgGrid"></div>
+    </div>
+  </div>
+
+  <!-- Modale Configurazione -->
+  <div class="of-modal-backdrop hidden" id="cfgModalBackdrop">
+    <div class="of-modal of-modal-wide">
+      <div class="of-modal-head">
+        <div class="title" id="cfgModalTitle">Nuova configurazione</div>
+        <button type="button" class="of-modal-close" id="cfgModalClose">&times;</button>
+      </div>
+      <div class="of-modal-body">
+        <label class="cfg-label">Titolo configurazione</label>
+        <input type="text" id="cfgNomeInput" class="cfg-input" placeholder="Es. Fibra + Mobile Business">
+        <label class="cfg-label">Categoria</label>
+        <select id="cfgCategoriaInput" class="cfg-input">
+          <option value="business">Business</option>
+          <option value="consumer">Consumer</option>
+        </select>
+        <label class="cfg-label">Nota</label>
+        <textarea id="cfgNotaInput" class="cfg-input" rows="2" placeholder="Nota libera visibile nel dettaglio&hellip;"></textarea>
+        <label class="cfg-label">Offerte incluse</label>
+        <input type="text" id="cfgOffSearch" class="cfg-input" placeholder="Cerca offerta da aggiungere&hellip;">
+        <div class="cfg-off-list" id="cfgOffList"></div>
+        <label class="cfg-label">Fasce prezzo</label>
+        <div class="cfg-fasce-list" id="cfgFasceList"></div>
+        <button type="button" class="of-chip of-manage-btn" id="cfgAddFascia">+ Aggiungi fascia</button>
+        <div class="cfg-total-preview" id="cfgTotalPreview"></div>
+      </div>
+      <div class="of-modal-foot">
+        <button type="button" class="of-chip of-manage-btn hidden" id="cfgDeleteBtn" style="color:#ff6767;border-color:#ff6767;">Elimina</button>
+        <button type="button" class="of-chip of-manage-btn" id="cfgSaveBtn" style="margin-left:auto;">Salva</button>
       </div>
     </div>
   </div>
 
-  <!-- VEICOLI -->
-  <div id="view-veicoli" class="hidden">
-    <div class="panel">
-      <div class="panel-head">
-        <div class="title">◈ veicoli</div>
-        <div class="panel-actions">
-          <button class="btn small ghost" id="btn-export-veicoli">Esporta PDF</button>
-          <button class="btn small ghost" id="btn-gestisci-campi-veicoli">Gestisci campi</button>
-          <button class="btn small" id="btn-nuovo-veicolo">+ Nuovo veicolo</button>
-        </div>
+  <!-- Modale Dettaglio Configurazione (sola lettura) -->
+  <div class="of-modal-backdrop hidden" id="cfgDetailBackdrop">
+    <div class="of-modal of-modal-wide">
+      <div class="of-modal-head">
+        <div class="title" id="cfgDetailTitle">Configurazione</div>
+        <button type="button" class="of-modal-close" id="cfgDetailClose">&times;</button>
       </div>
-      <div id="veicoli-table-wrap">
-        <table id="veicoli-table">
-          <thead><tr id="veicoli-thead-row"></tr></thead>
-          <tbody id="veicoli-tbody"></tbody>
-        </table>
-        <div id="veicoli-empty" class="hidden">Nessun veicolo salvato. Usa "+ Nuovo veicolo" per iniziare.</div>
+      <div class="of-modal-body" id="cfgDetailBody"></div>
+      <div class="of-modal-foot">
+        <button type="button" class="of-chip of-manage-btn" id="cfgDetailEditBtn" style="margin-left:auto;">Modifica</button>
       </div>
     </div>
   </div>
 
-  <!-- DOCUMENTI -->
-  <div id="view-documenti" class="hidden">
-    <div class="panel">
-      <div class="panel-head">
-        <div class="title">◈ documenti</div>
-        <div class="panel-actions">
-          <button class="btn small ghost" id="btn-export-documenti">Esporta PDF</button>
-          <button class="btn small ghost" id="btn-gestisci-campi-documenti">Gestisci campi</button>
-          <button class="btn small" id="btn-nuovo-documento">+ Nuovo documento</button>
-        </div>
+  <!-- Modale dettaglio / modifica tariffa -->
+  <!-- Modale Riordina Tariffe -->
+  <div class="of-modal-backdrop hidden" id="ofReorderBackdrop">
+    <div class="of-modal">
+      <div class="of-modal-head">
+        <div class="title">Riordina Tariffe</div>
+        <button type="button" class="of-modal-close" id="ofReorderClose">&times;</button>
       </div>
-      <div id="documenti-table-wrap">
-        <table id="documenti-table">
-          <thead><tr id="documenti-thead-row"></tr></thead>
-          <tbody id="documenti-tbody"></tbody>
-        </table>
-        <div id="documenti-empty" class="hidden">Nessun documento salvato. Usa "+ Nuovo documento" per iniziare.</div>
+      <div class="of-modal-body">
+        <p class="sub" style="margin:0 0 12px">Trascina dal simbolo &#9776; per cambiare l'ordine. Si salva subito, chiudi quando hai finito.</p>
+        <div id="ofReorderList" class="of-reorder-list"></div>
+        <div class="actions">
+          <span class="status" id="ofReorderStatus"></span>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- ACCESSI -->
-  <div id="view-accessi" class="hidden">
-    <div class="panel">
-      <div class="panel-head">
-        <div class="title">◈ credenziali</div>
-        <div class="panel-actions">
-          <button class="btn small ghost" id="btn-export-accessi">Esporta PDF</button>
-          <button class="btn small ghost" id="btn-gestisci-campi-accessi">Gestisci campi</button>
-          <button class="btn small" id="btn-nuovo-accesso">+ Nuova credenziale</button>
-        </div>
+  <div class="of-modal-backdrop hidden" id="cfgReorderBackdrop">
+    <div class="of-modal">
+      <div class="of-modal-head">
+        <div class="title">Riordina Configurazioni</div>
+        <button type="button" class="of-modal-close" id="cfgReorderClose">&times;</button>
       </div>
-      <div id="accessi-table-wrap">
-        <table id="accessi-table">
-          <thead><tr id="accessi-thead-row"></tr></thead>
-          <tbody id="accessi-tbody"></tbody>
-        </table>
-        <div id="accessi-empty" class="hidden">Nessuna credenziale salvata. Usa "+ Nuova credenziale" per iniziare.</div>
+      <div class="of-modal-body">
+        <p class="sub" style="margin:0 0 12px">Trascina dal simbolo &#9776; per cambiare l'ordine. Si salva subito, chiudi quando hai finito.</p>
+        <div id="cfgReorderList" class="of-reorder-list"></div>
+        <div class="actions">
+          <span class="status" id="cfgReorderStatus"></span>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- CONTATTI -->
-  <div id="view-contatti" class="hidden">
-    <div class="panel">
-      <div class="panel-head">
-        <div class="title">◈ contatti</div>
-        <div class="panel-actions">
-          <button class="btn small ghost" id="btn-export-contatti">Esporta PDF</button>
-          <button class="btn small ghost" id="btn-gestisci-campi-contatti">Gestisci campi</button>
-          <button class="btn small" id="btn-nuovo-contatto">+ Nuovo contatto</button>
-        </div>
+  <div class="of-modal-backdrop hidden" id="ofDetailBackdrop">
+    <div class="of-modal of-modal-wide">
+      <div class="of-modal-head">
+        <div class="title" id="ofDetailTitle">Dettaglio tariffa</div>
+        <button type="button" class="of-modal-close" id="ofDetailClose">&times;</button>
       </div>
-      <div id="contatti-table-wrap">
-        <table id="contatti-table">
-          <thead><tr id="contatti-thead-row"></tr></thead>
-          <tbody id="contatti-tbody"></tbody>
-        </table>
-        <div id="contatti-empty" class="hidden">Nessun contatto salvato. Usa "+ Nuovo contatto" per iniziare.</div>
+      <div class="of-modal-body">
+
+        <!-- Vista dettaglio (sola lettura) -->
+        <div id="ofDetailView">
+          <div class="of-detail-name" id="ofDetailName"></div>
+          <div class="of-detail-tag" id="ofDetailTag"></div>
+          <div class="of-detail-fields" id="ofDetailFields"></div>
+
+          <div id="ofLinkedWrap" class="hidden">
+            <div class="of-linked-title">&#128279; Tariffe collegate</div>
+            <div id="ofLinkedList"></div>
+          </div>
+          <div class="actions">
+            <button type="button" class="of-btn accent" id="ofDetailEditBtn">Modifica</button>
+            <button type="button" class="of-btn danger" id="ofDetailDeleteBtn">Elimina</button>
+          </div>
+        </div>
+
+        <!-- Vista modifica -->
+        <fieldset class="of-admin-form hidden" id="ofEditForm">
+          <legend id="ofEditFormLegend">Dati Tariffa</legend>
+          <input type="hidden" id="ofFormId">
+          <fieldset class="of-admin-form" id="ofCardConfigBox" style="margin-top:0;">
+            <legend>&#127912; Aspetto di questa card</legend>
+            <p class="sub" style="margin:0 0 12px">Scegli quali campi mostrare sulla card, quale mettere in evidenza e in che ordine.</p>
+            <div class="of-cardconfig-layout">
+              <div class="of-config-fields" id="ofCardConfigList"></div>
+              <div>
+                <div class="of-config-preview-label">Anteprima card</div>
+                <div class="of-grid" id="ofCardConfigPreview" style="grid-template-columns:1fr;"></div>
+              </div>
+            </div>
+          </fieldset>
+          <div class="row">
+            <div class="field">
+              <label>Categoria</label>
+              <select id="ofFormCategoria"><option value="consumer">Consumer</option><option value="business">Business</option></select>
+            </div>
+            <div class="field">
+              <label>Tipo</label>
+              <select id="ofFormTipo"><option value="mobile">Mobile</option><option value="fisso">Fisso</option><option value="opzione">Opzione</option></select>
+            </div>
+          </div>
+          <div class="row">
+            <div class="field wide"><label>Nome tariffa</label><input type="text" id="ofFormNome" placeholder="Es. Unlimited 5G"></div>
+          </div>
+          <div class="row">
+            <div class="field wide">
+              <label>Converge con (opzionale)</label>
+              <p class="sub" style="margin:0 0 8px; font-size:11.5px;">Seleziona a quali altre tariffe questa offerta permette di convergere (es. una Fibra che abilita una SIM). Il collegamento &egrave; a senso unico: se pi&ugrave; tariffe convergono verso la stessa SIM, non risulteranno collegate tra loro.</p>
+              <input type="text" id="ofFormLinkSearch" class="of-search-input" style="max-width:none; margin-bottom:8px;" placeholder="Cerca tariffa da collegare&hellip;">
+              <div id="ofFormLinkedList" class="of-config-fields" style="max-height:220px; overflow-y:auto;"></div>
+            </div>
+          </div>
+          <div id="ofFormExtraFields"></div>
+          <div class="actions">
+            <button type="button" class="of-btn accent" id="ofFormSave">Salva</button>
+            <button type="button" class="of-btn ghost" id="ofFormCancel">Annulla</button>
+            <span class="status" id="ofFormStatus"></span>
+          </div>
+        </fieldset>
+
       </div>
     </div>
   </div>
 
-  <!-- PIANO RIENTRO JEEP COMPASS -->
-  <div id="view-autopapa" class="hidden">
-    <div class="section-title">◈ Dashboard</div>
-    <div class="summary-grid">
-      <div class="summary-card">
-        <div class="lbl">Costo totale auto</div>
-        <input type="number" step="0.01" id="ap-costo-totale" placeholder="0.00">
-      </div>
-      <div class="summary-card">
-        <div class="lbl">Rata mensile prevista</div>
-        <input type="number" step="0.01" id="ap-rata-mensile" placeholder="0.00">
-      </div>
-      <div class="summary-card">
-        <div class="lbl">Pagato finora</div>
-        <div class="val" id="ap-pagato">€ 0.00</div>
-      </div>
-      <div class="summary-card">
-        <div class="lbl">Rimanente</div>
-        <div class="val accent" id="ap-rimanente">€ 0.00</div>
-      </div>
-      <div class="summary-card">
-        <div class="lbl">Mesi / anni mancanti</div>
-        <div class="val" id="ap-mesi-mancanti">—</div>
-      </div>
-
-      <div class="progress-bar-wrap">
-        <div class="progress-bar-label"><span>Completamento</span><span id="ap-percentuale">0%</span></div>
-        <div class="progress-bar-track"><div class="progress-bar-fill" id="ap-progress-fill" style="width:0%;"></div></div>
-      </div>
-    </div>
-
-    <div class="panel">
+  <!-- GESTIONE DATI -->
+  <div id="view-gestione" class="hidden">
+    <div class="gd-panel">
       <div class="panel-head">
-        <div class="title">◈ dettaglio movimenti</div>
+        <div class="title">◈ database offerte</div>
         <div class="panel-actions">
-          <button class="btn small ghost" id="btn-export-autopapa">Esporta PDF</button>
-          <button class="btn small ghost" id="btn-gestisci-campi-autopapa">Gestisci campi</button>
-          <button class="btn small" id="btn-nuovo-autopapa">+ Nuovo pagamento</button>
+          <button type="button" class="of-btn" id="gdAddColumn">+ Aggiungi colonna</button>
+          <button type="button" class="of-btn" id="gdAddRow">+ Nuova riga</button>
+          <button type="button" class="of-btn danger hidden" id="gdDeleteSelected">Elimina selezionate</button>
+          <button type="button" class="of-btn accent" id="gdSaveAll">Salva tutte le modifiche</button>
+          <span class="status" id="gdStatus"></span>
         </div>
       </div>
-      <div id="autopapa-table-wrap">
-        <table id="autopapa-table">
-          <thead><tr id="autopapa-thead-row"></tr></thead>
-          <tbody id="autopapa-tbody"></tbody>
-        </table>
-        <div id="autopapa-empty" class="hidden">Nessun pagamento registrato. Usa "+ Nuovo pagamento" per iniziare.</div>
+      <p class="sub" style="margin:0 0 14px">Modifica le celle direttamente, poi premi "Salva tutte le modifiche". Le righe modificate sono evidenziate.</p>
+      <div class="of-search-row" style="margin-bottom:14px">
+        <input type="text" id="gdSearchInput" class="of-search-input" placeholder="Cerca per nome, dettagli, badge, prezzo&hellip;">
       </div>
+      <div class="gd-table-wrap">
+        <table class="gd-table" id="gdTable">
+          <thead>
+            <tr id="gdHeaderRow">
+              <th><input type="checkbox" id="gdSelectAll" title="Seleziona tutte"></th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="gdTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="view-comuni" class="hidden">
+    <div class="gd-panel">
+      <div class="panel-head">
+        <div class="title">&#9670; comuni aree bianche</div>
+        <div class="panel-actions">
+          <input type="file" id="cabFileInput" accept=".xlsx" class="hidden">
+          <button type="button" class="of-btn" id="cabUploadBtn">Carica file aggiornato</button>
+          <span class="status" id="cabUploadStatus"></span>
+        </div>
+      </div>
+      <p class="sub" id="cabMeta" style="margin:0 0 18px"></p>
+
+      <div class="cab-search-box">
+        <input type="text" id="cabSearchInput" class="cfg-input" placeholder="Scrivi il nome di un comune&hellip;" autocomplete="off">
+        <div id="cabSearchResult"></div>
+      </div>
+
+      <div class="cab-nearby-section">
+        <div class="cfg-label" style="margin-top:26px;">Comuni vicino a Casale Monferrato</div>
+        <div class="cab-nearby-grid" id="cabNearbyGrid"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="view-manuali" class="hidden">
+    <div class="gd-panel">
+      <div class="panel-head">
+        <div class="title">&#9670; manuali</div>
+      </div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:22px;">
+        <button type="button" class="of-chip of-manage-btn" id="mnBulkOpenBtn" style="font-size:13.5px;padding:10px 18px;">&#128193; Importa da ZIP (archivio storico)</button>
+        <button type="button" class="of-chip of-manage-btn hidden" id="mnCatManageBtn">Gestisci categorie</button>
+      </div>
+
+      <p class="sub" style="margin:0 0 18px">Raccolta PDF con le spiegazioni WindTre. Caricando un aggiornamento di un manuale esistente, la versione precedente resta archiviata nello storico (visibile solo aprendo "Storico" sulla singola card).</p>
+
+      <div class="of-search-row" style="margin-bottom:18px">
+        <input type="text" id="mnSearchInput" class="of-search-input" placeholder="Cerca manuale per titolo o categoria&hellip;">
+      </div>
+
+      <div id="mnList"></div>
+
+      <details style="margin-top:26px;">
+        <summary class="cfg-label" style="cursor:pointer;display:inline-block;">Carica singolo PDF manualmente</summary>
+        <div id="mnUploadBox" class="cfg-fascia-row" style="align-items:flex-end;margin-top:12px;flex-wrap:wrap;">
+          <div style="flex:2;min-width:180px;">
+            <label class="cfg-label" style="margin-top:0;">Documento</label>
+            <select id="mnTargetSelect" class="cfg-input">
+              <option value="">+ Nuovo documento</option>
+            </select>
+          </div>
+          <div id="mnNewFields" style="display:flex;gap:12px;flex:2;flex-wrap:wrap;">
+            <div style="flex:1;min-width:160px;">
+              <label class="cfg-label" style="margin-top:0;">Titolo</label>
+              <input type="text" id="mnTitoloInput" class="cfg-input" placeholder="Es. Guida attivazione SIM">
+            </div>
+            <div style="flex:1;min-width:140px;">
+              <label class="cfg-label" style="margin-top:0;">Categoria</label>
+              <select id="mnCategoriaInput" class="cfg-input"></select>
+            </div>
+          </div>
+          <input type="file" id="mnFileInput" accept="application/pdf" class="hidden">
+          <button type="button" class="of-chip of-manage-btn" id="mnUploadTriggerBtn">Scegli PDF e carica</button>
+          <span class="status" id="mnUploadStatus"></span>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <!-- Gestione categorie (SuperAdmin) -->
+  <div class="of-modal-backdrop hidden" id="mnCatBackdrop">
+    <div class="of-modal">
+      <div class="of-modal-head">
+        <div class="title">Gestisci categorie</div>
+        <button type="button" class="of-modal-close" id="mnCatClose">&times;</button>
+      </div>
+      <div class="of-modal-body">
+        <div id="mnCatList" style="margin-bottom:14px;"></div>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="mnCatNewInput" class="cfg-input" placeholder="Nome nuova categoria">
+          <button type="button" class="of-chip of-manage-btn" id="mnCatAddBtn">Aggiungi</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import massivo da ZIP -->
+  <div class="of-modal-backdrop hidden" id="mnBulkBackdrop">
+    <div class="of-modal of-modal-wide" style="max-width:900px;">
+      <div class="of-modal-head">
+        <div class="title">Importa da ZIP</div>
+        <button type="button" class="of-modal-close" id="mnBulkClose">&times;</button>
+      </div>
+      <div class="of-modal-body">
+        <p class="sub" style="margin:0 0 14px">Seleziona uno o pi&ugrave; file .zip. Se hai un file manifest.json (mappatura gi&agrave; verificata), caricalo insieme: verr&agrave; usato al posto del riconoscimento automatico, molto pi&ugrave; preciso.</p>
+        <input type="file" id="mnBulkFiles" accept=".zip" multiple class="cfg-input">
+        <label class="cfg-label">Manifest (opzionale, .json)</label>
+        <input type="file" id="mnBulkManifest" accept=".json" class="cfg-input">
+        <button type="button" class="of-chip of-manage-btn" id="mnBulkAnalyzeBtn" style="margin-top:10px;">Analizza</button>
+        <span class="status" id="mnBulkAnalyzeStatus"></span>
+        <div id="mnBulkSkipped" style="margin-top:10px;"></div>
+        <div id="mnBulkReview" style="margin-top:16px;"></div>
+      </div>
+      <div class="of-modal-foot">
+        <button type="button" class="of-chip of-manage-btn hidden" id="mnBulkConfirmBtn" style="margin-left:auto;">Conferma import</button>
+        <span class="status" id="mnBulkImportStatus"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Anteprima PDF -->
+  <div class="of-modal-backdrop hidden" id="mnPreviewBackdrop">
+    <div class="of-modal of-modal-wide" style="max-width:820px;height:88vh;">
+      <div class="of-modal-head">
+        <div class="title" id="mnPreviewTitle">Anteprima</div>
+        <button type="button" class="of-modal-close" id="mnPreviewClose">&times;</button>
+      </div>
+      <div class="of-modal-body" style="padding:0;flex:1;">
+        <iframe id="mnPreviewFrame" style="width:100%;height:100%;border:0;background:#1a1a1a;"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- Storico versioni -->
+  <div class="of-modal-backdrop hidden" id="mnHistBackdrop">
+    <div class="of-modal">
+      <div class="of-modal-head">
+        <div class="title" id="mnHistTitle">Storico</div>
+        <button type="button" class="of-modal-close" id="mnHistClose">&times;</button>
+      </div>
+      <div class="of-modal-body" id="mnHistBody"></div>
+    </div>
+  </div>
+
+  <!-- Import storico multiplo -->
+  <div class="of-modal-backdrop hidden" id="mnImportBackdrop">
+    <div class="of-modal">
+      <div class="of-modal-head">
+        <div class="title" id="mnImportTitle">Importa storico</div>
+        <button type="button" class="of-modal-close" id="mnImportClose">&times;</button>
+      </div>
+      <div class="of-modal-body">
+        <p class="sub" style="margin:0 0 14px">Carica uno o pi&ugrave; PDF vecchi di questo documento: verranno aggiunti allo storico senza sostituire la versione attuale.</p>
+        <label class="cfg-label" style="margin-top:0;">File PDF (selezione multipla)</label>
+        <input type="file" id="mnImportFiles" accept="application/pdf" multiple class="cfg-input">
+        <label class="cfg-label">Data documento (opzionale)</label>
+        <input type="date" id="mnImportDate" class="cfg-input">
+      </div>
+      <div class="of-modal-foot">
+        <button type="button" class="of-chip of-manage-btn" id="mnImportGoBtn" style="margin-left:auto;">Importa</button>
+        <span class="status" id="mnImportStatus"></span>
+      </div>
+    </div>
+  </div>
+
+  <div id="view-impostazioni" class="hidden">
+    <div class="gd-panel">
+      <div class="panel-head">
+        <div class="title">&#9670; impostazioni</div>
+      </div>
+      <p class="sub" style="margin:0 0 18px">Gestisci quali pagine e azioni pu&ograve; usare ogni utente.</p>
+
+      <div class="cfg-fascia-row" style="align-items:flex-end;margin-bottom:20px;">
+        <div style="flex:1;min-width:200px;">
+          <label class="cfg-label" style="margin-top:0;">Aggiungi utente (email)</label>
+          <input type="text" id="stgNewEmail" class="cfg-input" placeholder="nome@dominio.it">
+        </div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:#7fc4dc;">
+          <input type="checkbox" id="stgNewSuperadmin"> SuperAdmin
+        </label>
+        <button type="button" class="of-chip of-manage-btn" id="stgAddUserBtn">+ Aggiungi utente</button>
+      </div>
+
+      <div id="stgUsersList"></div>
     </div>
   </div>
 </div>
 
-<!-- ===== MODAL: SCHEDA CONTRATTO ===== -->
-<!-- riusata sia per contratti che per abbonamenti -->
-<div id="modal-contratto" class="modal-overlay hidden">
-  <div class="modal">
-    <span class="modal-close" data-close="modal-contratto">✕</span>
-    <div class="title" id="modal-contratto-title">Scheda contratto</div>
-    <div id="modal-contratto-fields"></div>
-    <div class="modal-actions">
-      <button class="btn small ghost hidden" id="btn-elimina-contratto">Elimina</button>
-      <button class="btn small" id="btn-salva-contratto">Salva</button>
-    </div>
-  </div>
-</div>
-
-<!-- ===== MODAL: GESTISCI CAMPI ===== -->
-<div id="modal-campi" class="modal-overlay hidden">
-  <div class="modal">
-    <span class="modal-close" data-close="modal-campi">✕</span>
-    <div class="title">Gestisci campi tabella</div>
-    <div id="campi-list"></div>
-    <button class="btn small ghost" id="btn-aggiungi-campo" style="margin-top:10px;">+ Aggiungi campo</button>
-    <div class="modal-actions">
-      <span></span>
-      <button class="btn small" id="btn-salva-campi">Salva campi</button>
-    </div>
-  </div>
-</div>
-
-<!-- ===== MODAL: METEO DETTAGLIO ===== -->
-<div id="modal-meteo" class="modal-overlay hidden">
-  <div class="modal">
-    <span class="modal-close" data-close="modal-meteo">✕</span>
-    <div class="title" id="modal-meteo-title">Meteo</div>
-    <div id="modal-meteo-body" style="font-size:0.95rem;line-height:2;color:#e8f4f8;"></div>
-    <div id="radar-map"></div>
-    <div class="radar-label">◈ radar precipitazioni in tempo reale — rainviewer</div>
-  </div>
-</div>
-
-<!-- ===== MODAL: DIAGNOSTICA DI SESSIONE (click sull'ora) ===== -->
-<div id="modal-tempo" class="modal-overlay hidden">
-  <div class="modal">
-    <span class="modal-close" data-close="modal-tempo">✕</span>
-    <div class="title">◈ diagnostica di sistema</div>
-    <div id="modal-tempo-body" style="font-size:0.95rem;line-height:2;color:#e8f4f8;"></div>
-  </div>
-</div>
-
-<!-- ===== MODAL: PROSSIMI COMPLEANNI ===== -->
-<div id="modal-compleanni" class="modal-overlay hidden">
-  <div class="modal">
-    <span class="modal-close" data-close="modal-compleanni">✕</span>
-    <div class="title">🎂 Compleanni nei prossimi 30 giorni</div>
-    <div id="modal-compleanni-body" style="font-size:0.95rem;line-height:2;color:#e8f4f8;"></div>
-  </div>
-</div>
-
+  
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="config.js"></script>
+<script src="perms.js"></script>
 <script src="app.js"></script>
+<script src="compilatore.js?v=3"></script>
+<script src="offerte.js?v=1"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="comuni.js?v=3"></script>
+<script src="manuali.js?v=1"></script>
+<script src="settings.js?v=1"></script>
 <div id="login-flash"></div>
 <div id="login-iris"></div>
 <div id="transition-label">Accesso consentito</div>
