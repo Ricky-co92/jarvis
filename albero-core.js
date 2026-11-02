@@ -1,7 +1,7 @@
 // albero-core.js — Albero genealogico: modello dati, albero SVG, controlli, export GEDCOM.
 // Condiviso da app.js (area privata) e da albero-pubblico.html. Nessuna dipendenza da Supabase.
 const GEN = (() => {
-  const L = { W: 164, H: 48, GX: 16, RIGA: 100 };
+  const L = { W: 210, H: 86, GX: 22, RIGA: 150 };
   const MESI_IT = { gen: 1, feb: 2, mar: 3, apr: 4, mag: 5, giu: 6, lug: 7, ago: 8, set: 9, ott: 10, nov: 11, dic: 12 };
   const MESI_EN = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
   const TIPI = { nascita: "Nascita", morte: "Morte", matrimonio: "Matrimonio", separazione: "Separazione", divorzio: "Divorzio", residenza: "Residenza", ordinazione: "Ordinazione", altro: "Altro" };
@@ -153,20 +153,29 @@ const GEN = (() => {
     const box = (p, x, y, ev) => {
       const c = COL[p.sesso] || COL.U, sel = ev === "root", url = fotoDi(p.id);
       lo = Math.min(lo, x); hi = Math.max(hi, x + W);
-      let n = nome(p); const max = url ? 19 : 23; if (n.length > max) n = n.slice(0, max - 1) + "…";
-      const v = p.vivente ? "" : vita(ix, p.id), tx = url ? 44 + (W - 44) / 2 : W / 2;
+      const tx = url ? 74 : 16, maxc = Math.floor((W - tx - 8) / 7.4);
+      const cut = (t, m) => t.length > m ? t.slice(0, m - 1) + "…" : t;
+      const nm = p.nome && p.nome !== "?" ? p.nome : "", cg = p.cognome || "";
+      const riga1 = cut(nm || cg || "?", maxc), riga2 = nm && cg ? cut(cg.toUpperCase(), maxc) : "";
+      const v = p.vivente ? "" : vita(ix, p.id);
+      const nasc = p.vivente ? null : evento(ix, p.id, "nascita"), citta = nasc ? (luogoNome(ix, nasc) || "").split(",")[0].trim() : "";
       let img = "";
       if (url) {
         const cid = "fc" + (nFoto++);
-        defs.push(`<clipPath id="${cid}"><circle cx="25" cy="24" r="17"/></clipPath>`);
-        img = `<circle cx="25" cy="24" r="18" fill="none" stroke="${c.s}" stroke-width="1"/><image href="${esc(url)}" x="8" y="7" width="34" height="34" preserveAspectRatio="xMidYMid slice" clip-path="url(#${cid})"/>`;
+        defs.push(`<clipPath id="${cid}"><circle cx="40" cy="${H / 2}" r="25"/></clipPath>`);
+        img = `<circle cx="40" cy="${H / 2}" r="27" fill="#07161d" stroke="${c.s}" stroke-width="1.5"/><image href="${esc(url)}" x="15" y="${H / 2 - 25}" width="50" height="50" preserveAspectRatio="xMidYMid slice" clip-path="url(#${cid})"/>`;
       }
+      const F = 'font-family="Rajdhani,Segoe UI,sans-serif"';
       els.push(`<g class="gn" data-id="${p.id}" transform="translate(${x},${y})" style="cursor:pointer">` +
-        `<rect width="${W}" height="${H}" rx="4" fill="${c.f}" stroke="${c.s}" stroke-width="${sel ? 2.6 : 1.2}"/>${img}` +
-        `<text x="${tx}" y="20" text-anchor="middle" font-family="Rajdhani,Segoe UI,sans-serif" font-size="14" font-weight="700" fill="#c8f2ff">${esc(n)}</text>` +
-        `<text x="${tx}" y="37" text-anchor="middle" font-family="Rajdhani,Segoe UI,sans-serif" font-size="12" fill="#8fb8cc">${esc(v)}</text></g>`);
+        (sel ? `<rect x="-4" y="-4" width="${W + 8}" height="${H + 8}" rx="9" fill="none" stroke="${c.s}" stroke-opacity=".45" stroke-width="2"/>` : "") +
+        `<rect width="${W}" height="${H}" rx="6" fill="#0a1f29" stroke="${c.s}" stroke-width="${sel ? 2.6 : 1.4}"/>` +
+        `<rect width="${W}" height="${H}" rx="6" fill="${c.f}"/><rect width="6" height="${H}" rx="3" fill="${c.s}"/>${img}` +
+        `<text x="${tx}" y="${riga2 ? 24 : 30}" ${F} font-size="16" font-weight="700" fill="#e8fbff">${esc(riga1)}</text>` +
+        (riga2 ? `<text x="${tx}" y="42" ${F} font-size="14" font-weight="700" fill="${c.s}" letter-spacing=".4">${esc(riga2)}</text>` : "") +
+        `<text x="${tx}" y="${riga2 ? 60 : 52}" ${F} font-size="14" fill="#b8dbe8">${esc(v)}</text>` +
+        (citta ? `<text x="${tx}" y="${riga2 ? 76 : 68}" ${F} font-size="12" fill="#7fa6b8">${esc(cut(citta, maxc + 2))}</text>` : "") + `</g>`);
     };
-    const gomito = (x1, y1, x2, y2) => { const m = (y1 + y2) / 2; lin.push(`<path d="M${x1},${y1} V${m} H${x2} V${y2}" fill="none" stroke="#2a7f99" stroke-width="1.2"/>`); };
+    const gomito = (x1, y1, x2, y2) => { const m = (y1 + y2) / 2; lin.push(`<path d="M${x1},${y1} V${m} H${x2} V${y2}" fill="none" stroke="#3a9cba" stroke-width="1.8"/>`); };
 
     const rigaRoot = profA * RIGA;
     // posizioni discendenti (frame virtuale: sinistra del nodo radice = 0)
@@ -177,7 +186,7 @@ const GEN = (() => {
       if (isRoot) { xr = ux + W / 2; uxRoot = ux; }
       n.sp.forEach((s, k) => {
         const sx = ux + (k + 1) * (W + GX);
-        lin.push(`<line x1="${ux + k * (W + GX) + W}" y1="${y + H / 2}" x2="${sx}" y2="${y + H / 2}" stroke="#2a7f99" stroke-width="1.2"/>`);
+        lin.push(`<line x1="${ux + k * (W + GX) + W}" y1="${y + H / 2}" x2="${sx}" y2="${y + H / 2}" stroke="#3a9cba" stroke-width="1.8"/>`);
         box(s, sx, y, "");
       });
       if (n.figli.length) {

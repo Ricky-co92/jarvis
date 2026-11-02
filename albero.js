@@ -90,6 +90,7 @@ function albStile() {
   .alb-kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:8px}
   .alb-kpi div{border:1px solid rgba(42,184,217,.25);border-radius:4px;padding:10px;text-align:center;color:#8fb8cc;font-size:.8rem;text-transform:uppercase}
   .alb-kpi b{display:block;font-size:1.5rem;color:#c8f2ff;font-family:'Rajdhani',sans-serif}
+  .alb-det{border-bottom:1px solid rgba(42,184,217,.12);padding:4px 0}.alb-det summary{cursor:pointer;color:#c8f2ff}
   .alb-bio{white-space:pre-wrap;line-height:1.45;margin:6px 0}
   .alb-chk{color:#8fb8cc;font-size:.85rem;display:flex;gap:5px;align-items:center;cursor:pointer}
   @media(max-width:640px){.alb-barra{grid-template-columns:100px 1fr 34px}.alb-ev{grid-template-columns:1fr 1fr}.alb-grid2{grid-template-columns:1fr}}`;
@@ -110,6 +111,7 @@ async function albInit() {
           <button class="btn small ghost" id="alb-btn-pdf-elenco">PDF elenco</button>
           <button class="btn small ghost" id="alb-btn-pdf-albero">PDF albero</button>
           <button class="btn small ghost" id="alb-btn-libro">Libro di famiglia</button>
+          <button class="btn small ghost" id="alb-btn-tutto">Tutti i dati</button>
           <button class="btn small" id="alb-btn-nuova">+ Persona</button>
         </div>
       </div>
@@ -120,6 +122,7 @@ async function albInit() {
     $a("alb-btn-pdf-elenco").onclick = albPdfElenco;
     $a("alb-btn-pdf-albero").onclick = albPdfAlbero;
     $a("alb-btn-libro").onclick = albLibroPdf;
+    $a("alb-btn-tutto").onclick = albTuttiIDati;
     $a("alb-tabs").innerHTML = ALB_TAB.map(([k, t]) => `<div class="alb-tab" data-tab="${k}">${t}</div>`).join("");
     $a("alb-tabs").onclick = e => { const t = e.target.closest(".alb-tab"); if (t) { ALB.tab = t.dataset.tab; albRenderTab(); } };
   }
@@ -1032,4 +1035,44 @@ async function albLibroPdf() {
     doc.save(`libro_di_famiglia_${albOggi()}.pdf`);
   } catch (e) { albErr(e); }
   btn.disabled = false; btn.textContent = testo0;
+}
+
+
+// ---------- TUTTI I DATI INSERITI (riepilogo completo + backup JSON) ----------
+function albTuttiIDati() {
+  const ix = ALB.ix, d = ALB.d, n = GEN.nome;
+  if (!ix) return;
+  const conta = [["Persone", d.persone.length], ["Famiglie/unioni", d.famiglie.length], ["Eventi", d.eventi.length], ["Luoghi", d.luoghi.length],
+    ["Fonti", ALB.fonti.length], ["Documenti", ALB.documenti.length], ["Foto profilo", d.persone.filter(p => p.foto_percorso).length],
+    ["Biografie", d.persone.filter(p => p.biografia).length], ["Con note", d.persone.filter(p => p.note).length]];
+  const lk = q => `<span class="alb-link" data-az="scheda" data-id="${q.id}">${esc(n(q))}</span>`;
+  const scheda = p => {
+    const g = GEN.genitori(ix, p.id), cons = GEN.coniugi(ix, p.id), fg = GEN.figli(ix, p.id);
+    const r = (t, v) => v ? `<div class="alb-riga" style="align-items:flex-start;margin-bottom:3px"><small style="min-width:92px">${t}:</small><span>${v}</span></div>` : "";
+    const evs = GEN.schedaVitaHtml(ix, p.id);
+    const fonti = ALB.fonti.filter(f => f.persona_id === p.id), docs = ALB.documenti.filter(f => f.persona_id === p.id);
+    return `<details class="alb-det" data-nome="${esc((n(p) + " " + GEN.vita(ix, p.id)).toLowerCase())}"><summary><b>${esc(n(p))}</b> <small>${esc(GEN.vita(ix, p.id))}</small></summary>
+      <div style="padding:6px 0 10px 14px">
+      ${r("Sesso", { M: "Maschio", F: "Femmina", U: "" }[p.sesso])}${r("Stato in vita", { auto: "", vivente: "Vivente", deceduto: "Deceduto" }[p.stato_vita])}
+      ${evs}${r("Genitori", [g.padre, g.madre].filter(Boolean).map(lk).join(" · "))}
+      ${cons.map(c => r("Coniuge", (c.altro ? lk(c.altro) : "(non indicato)"))).join("")}${r("Figli", fg.map(lk).join(" · "))}
+      ${r("Biografia", p.biografia ? `<span class="alb-bio">${esc(p.biografia)}</span>` : "")}${r("Note", p.note ? `<span class="alb-bio">${esc(p.note)}</span>` : "")}
+      ${r("Fonti", fonti.map(f => esc(f.titolo)).join("; "))}${r("Documenti", docs.map(x => esc(x.nome)).join("; "))}${r("Foto", p.foto_percorso ? "sì" : "")}
+      <span class="alb-link" data-az="modifica" data-id="${p.id}">Modifica</span></div></details>`;
+  };
+  const m = albModale("alb-tutto-modal", "Tutti i dati inseriti", `
+    <div class="alb-kpi">${conta.map(([t, v]) => `<div>${t}<b>${v}</b></div>`).join("")}</div>
+    <div class="alb-bar"><input class="alb-in" id="tt-q" placeholder="Filtra per nome…" style="flex:1;min-width:160px">
+      <button class="btn small ghost" id="tt-esp">Espandi tutto</button><button class="btn small ghost" id="tt-bk">Scarica backup (JSON)</button></div>
+    <div id="tt-lista">${[...d.persone].sort(albOrdPers).map(scheda).join("")}</div>`, 900);
+  const det = () => [...m.querySelectorAll(".alb-det")];
+  $a("tt-q").oninput = e => { const q = e.target.value.trim().toLowerCase(); det().forEach(x => { x.style.display = !q || x.dataset.nome.includes(q) ? "" : "none"; }); };
+  let aperti = false;
+  $a("tt-esp").onclick = e => { aperti = !aperti; det().forEach(x => { if (x.style.display !== "none") x.open = aperti; }); e.target.textContent = aperti ? "Chiudi tutto" : "Espandi tutto"; };
+  $a("tt-bk").onclick = () => albScaricaTesto(`albero_backup_${albOggi()}.json`, JSON.stringify({ ...d, fonti: ALB.fonti, documenti: ALB.documenti }, null, 1), "application/json");
+  m.onclick = e => {
+    const t = e.target.closest("[data-az]"); if (!t) return;
+    if (t.dataset.az === "scheda") albApriScheda(t.dataset.id);
+    else if (t.dataset.az === "modifica") { m.remove(); albApriPersona(t.dataset.id); }
+  };
 }
