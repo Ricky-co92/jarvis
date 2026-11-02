@@ -669,6 +669,7 @@ async function onLogin(user){
   checkBirthdaysToday();
   checkDeadlinesOnStartup();
   updateBirthdayWidget();
+  caricaRicorrenzeFamiglia();
   switchView("home");
 }
 
@@ -761,6 +762,17 @@ function closeDeadlinePopup(){
 }
 
 // ---------- PROSSIMI COMPLEANNI (30 giorni) ----------
+// Ricorrenze dell'albero genealogico (compleanni, anniversari...), caricate in silenzio dopo il login
+let famigliaRic = [];
+async function caricaRicorrenzeFamiglia(){
+  try{
+    if(typeof GEN === "undefined" || typeof albTutto !== "function") return;
+    const [persone, famiglie, figli, eventi, luoghi] = await Promise.all(["gen_persone","gen_famiglie","gen_figli","gen_eventi","gen_luoghi"].map(albTutto));
+    famigliaRic = GEN.ricorrenze(GEN.indice({ persone, famiglie, figli, eventi, luoghi }), 365);
+    updateBirthdayWidget();
+  }catch(e){ famigliaRic = []; }
+}
+
 function getUpcomingBirthdays(daysAhead){
   const cfg = SECTIONS.contatti;
   if(!cfg || !cfg.birthdayField) return [];
@@ -782,6 +794,9 @@ function getUpcomingBirthdays(daysAhead){
       result.push({ name, date: next, daysUntil });
     }
   });
+  famigliaRic.forEach(x=>{
+    if(x.giorniA <= daysAhead) result.push({ name:x.testo, date:(x.data instanceof Date ? x.data : new Date(x.data)), daysUntil:x.giorniA, icona:x.icona });
+  });
   result.sort((a,b)=> a.daysUntil - b.daysUntil);
   return result;
 }
@@ -801,7 +816,7 @@ function openUpcomingBirthdaysModal(){
     body.innerHTML = upcoming.map(u=>{
       const dataStr = u.date.toLocaleDateString("it-IT", { day:"numeric", month:"long" });
       const quando = u.daysUntil === 0 ? "oggi" : (u.daysUntil === 1 ? "domani" : `tra ${u.daysUntil} giorni`);
-      return `<div>🎂 <b style="color:#8fe8ff">${escapeHtml(u.name)}</b> — ${dataStr} (${quando})</div>`;
+      return `<div>${u.icona || "🎂"} <b style="color:#8fe8ff">${escapeHtml(u.name)}</b> — ${dataStr} (${quando})</div>`;
     }).join("");
   }
   document.getElementById("modal-compleanni").classList.remove("hidden");

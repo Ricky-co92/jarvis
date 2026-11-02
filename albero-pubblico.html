@@ -21,6 +21,16 @@
   #scheda small{color:#8fb8cc}
   #msg{padding:40px 16px;text-align:center;color:#8fb8cc}
   .nota{color:#6f93a3;font-size:.78rem;padding:0 16px 8px}
+  .alb-riga{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+  .alb-link{color:#8fe8ff;cursor:pointer;text-decoration:underline dotted}
+  .alb-sez{margin:16px 0 8px;color:#4fc8e8;font-weight:700;text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid rgba(42,184,217,.2);padding-bottom:4px}
+  .alb-bio{white-space:pre-wrap;line-height:1.45}
+  small{color:#8fb8cc}
+  #modale{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:10;padding:12px}
+  #modale[hidden]{display:none}
+  #modale .box{background:#07161d;border:1px solid rgba(42,184,217,.5);border-radius:6px;max-width:640px;width:100%;max-height:88vh;overflow:auto;padding:16px 18px;position:relative}
+  #modale .x{position:absolute;right:12px;top:8px;cursor:pointer;font-size:1.2rem;color:#8fb8cc}
+  #modale h2{margin:0 24px 6px 0;color:#4fc8e8}
 </style>
 </head>
 <body>
@@ -33,7 +43,8 @@
 <div id="msg">Caricamento…</div>
 <div id="vista" hidden></div>
 <div id="scheda" hidden></div>
-<div class="nota" id="nota" hidden>Trascina per spostare · rotella o pulsanti per lo zoom · tocca una persona per metterla al centro. Le persone viventi sono oscurate.</div>
+<div id="modale" hidden><div class="box"><span class="x" id="mx">✕</span><div id="mc"></div></div></div>
+<div class="nota" id="nota" hidden>Trascina per spostare · rotella o pulsanti per lo zoom · tocca una persona per aprire la sua scheda. Le persone viventi sono oscurate.</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
@@ -55,7 +66,7 @@
   const visibili = [...data.persone].filter(p => !p.vivente).sort(ordine);
   // radice: prima persona non vivente con più antenati noti, altrimenti la prima
   const lunghezza = id => { let n = 0, g = GEN.genitori(ix, id); const s = [g.padre, g.madre].filter(Boolean); s.forEach(x => n += 1 + lunghezza(x.id)); return n; };
-  const radice = [...data.persone].sort((a, b) => lunghezza(b.id) - lunghezza(a.id))[0];
+  const radice = (data.radice && ix.p.get(data.radice)) || [...data.persone].sort((a, b) => lunghezza(b.id) - lunghezza(a.id))[0];
 
   const etichette = new Map(), conta = {};
   data.persone.forEach(p => {
@@ -70,7 +81,24 @@
   $("msg").hidden = true; $("vista").hidden = false; $("scheda").hidden = false; $("nota").hidden = false;
   let root = radice.id;
 
-  const v = GEN.vista($("vista"), ix, { onSeleziona: id => { root = id; aggiorna(); } });
+  const v = GEN.vista($("vista"), ix, { onSeleziona: id => apriScheda(id) });
+  function apriScheda(id) {
+    const p = ix.p.get(id); if (!p) return;
+    const vita = p.vivente ? "" : GEN.schedaVitaHtml(ix, id), tl = p.vivente ? "" : GEN.timelineHtml(ix, id);
+    $("mc").innerHTML = `<h2>${GEN.esc(GEN.nome(p))}</h2><small>${GEN.esc(p.vivente ? "" : GEN.vita(ix, id))}</small>` +
+      (p.biografia ? `<div class="alb-sez">Biografia</div><div class="alb-bio">${GEN.esc(p.biografia)}</div>` : "") +
+      (vita ? `<div class="alb-sez">Vita</div>${vita}` : "") +
+      `<div class="alb-sez">Famiglia</div>${GEN.schedaFamigliaHtml(ix, id)}` +
+      (tl ? `<div class="alb-sez">Linea del tempo</div>${tl}` : "") +
+      `<div style="margin-top:14px"><button id="mcentra">Mostra nell'albero</button></div>`;
+    $("modale").hidden = false;
+    $("mcentra").onclick = () => { root = id; $("modale").hidden = true; aggiorna(); };
+  }
+  $("mx").onclick = () => { $("modale").hidden = true; };
+  $("modale").onclick = e => {
+    if (e.target === $("modale")) $("modale").hidden = true;
+    const t = e.target.closest("[data-az=scheda]"); if (t) apriScheda(t.dataset.id);
+  };
   function aggiorna() {
     v.imposta(root, ix);
     const p = ix.p.get(root), g = GEN.genitori(ix, root);
