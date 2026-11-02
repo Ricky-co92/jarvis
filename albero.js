@@ -157,9 +157,9 @@ function albTabAlbero() {
     </div>
     <div class="alb-vista" id="alb-vista"></div>
     <div class="alb-scheda" id="alb-scheda"></div>
-    <div style="color:#8fb8cc;font-size:.8rem;margin-top:6px">Trascina per spostare · rotella per zoom · clic su una persona per metterla al centro.</div>`;
+    <div style="color:#8fb8cc;font-size:.8rem;margin-top:6px">Trascina per spostare · rotella per zoom · clic su una persona per aprire la scheda (da lì puoi centrarla nell'albero).</div>`;
   ALB.vista = GEN.vista($a("alb-vista"), ALB.ix, {
-    onSeleziona: id => { ALB.root = id; try { localStorage.setItem("alb_root", id); } catch (_) {} albAggiornaAlbero(); }
+    onSeleziona: id => albApriScheda(id)
   });
   $a("alb-cerca").onchange = e => { const id = etichette.get(e.target.value); if (id) { ALB.root = id; e.target.value = ""; albAggiornaAlbero(); } };
   $a("alb-zm-p").onclick = () => ALB.vista.zoom(1.25);
@@ -185,7 +185,7 @@ function albAggiornaAlbero() {
     ${riga("Genitori", esc([g.padre, g.madre].filter(Boolean).map(GEN.nome).join(" e ")))}
     ${riga("Coniugi", esc(cons.map(GEN.nome).join(", ")))}
     ${riga("Figli", esc(fg.map(GEN.nome).join(", ")))}`;
-  $a("alb-apri-root").onclick = () => albApriPersona(p.id);
+  $a("alb-apri-root").onclick = () => albApriScheda(p.id);
 }
 
 // ---------- TAB: PERSONE ----------
@@ -206,7 +206,7 @@ function albTabPersone() {
       <td>${esc(r.m && r.m.data_testo || "")}</td><td>${r.nf || ""}</td></tr>`).join("");
   };
   $a("alb-filtro").oninput = disegna;
-  $a("alb-persone-tb").onclick = e => { const tr = e.target.closest("tr"); if (tr) albApriPersona(tr.dataset.id); };
+  $a("alb-persone-tb").onclick = e => { const tr = e.target.closest("tr"); if (tr) albApriScheda(tr.dataset.id); };
   disegna();
 }
 
@@ -287,7 +287,7 @@ function albTabFonti() {
   $a("alb-body").onclick = e => {
     const d = e.target.closest("[data-doc]");
     if (d) { e.stopPropagation(); return albApriDoc(d.dataset.doc); }
-    const tr = e.target.closest("tr[data-p]"); if (tr && tr.dataset.p) albApriPersona(tr.dataset.p);
+    const tr = e.target.closest("tr[data-p]"); if (tr && tr.dataset.p) albApriScheda(tr.dataset.p);
   };
 }
 
@@ -297,7 +297,7 @@ function albTabControlli() {
   $a("alb-body").innerHTML = `<div style="color:#8fb8cc;margin-bottom:10px">${c.length ? c.length + " segnalazioni (non modificano i dati: correggi dalla scheda persona)" : "Nessuna anomalia trovata."}</div>
     <div style="overflow-x:auto"><table class="alb-table"><tbody>${c.map(x => `<tr class="${x.pid ? "cl" : ""}" data-id="${x.pid || ""}">
       <td class="${x.gravita === "errore" ? "alb-err" : "alb-avv"}" style="width:30px">${x.gravita === "errore" ? "✖" : "⚠"}</td><td>${esc(x.testo)}</td></tr>`).join("")}</tbody></table></div>`;
-  $a("alb-body").onclick = e => { const tr = e.target.closest("tr[data-id]"); if (tr && tr.dataset.id) albApriPersona(tr.dataset.id); };
+  $a("alb-body").onclick = e => { const tr = e.target.closest("tr[data-id]"); if (tr && tr.dataset.id) albApriScheda(tr.dataset.id); };
 }
 
 // ---------- TAB: CONDIVIDI ----------
@@ -431,6 +431,67 @@ function albApriPersona(id) {
   };
 }
 
+// ---------- SCHEDA PERSONA (sola lettura, con tutti i collegamenti) ----------
+function albEta(ix, id) {
+  const n = GEN.anno(GEN.evento(ix, id, "nascita")), m = GEN.anno(GEN.evento(ix, id, "morte")), oggi = new Date().getFullYear();
+  if (n && m) return `${m - n} anni alla morte`;
+  if (n && oggi - n <= 100) return `circa ${oggi - n} anni`;
+  return "";
+}
+
+function albApriScheda(id) {
+  const ix = ALB.ix, p = ix.p.get(id);
+  if (!p) return;
+  const nm = q => `<span class="alb-link" data-az="scheda" data-id="${q.id}">${esc(GEN.nome(q))}</span> <small>${esc(GEN.vita(ix, q.id))}</small>`;
+  const uniq = arr => { const v = new Set(); return arr.filter(x => x && !v.has(x.id) && v.add(x.id)); };
+  const lista = (t, arr) => arr.length ? `<div class="alb-riga" style="align-items:flex-start"><small style="min-width:92px">${t}:</small><span>${arr.map(nm).join(" · ")}</span></div>` : "";
+
+  const g = GEN.genitori(ix, id), genitori = [g.padre, g.madre].filter(Boolean);
+  const fratelli = uniq((ix.famFiglio.get(id) || []).flatMap(fid => (ix.figliDi.get(fid) || []).map(c => ix.p.get(c))).filter(x => x && x.id !== id));
+  const nonni = uniq(genitori.flatMap(gp => { const gg = GEN.genitori(ix, gp.id); return [gg.padre, gg.madre]; }));
+  const zii = uniq(genitori.flatMap(gp => (ix.famFiglio.get(gp.id) || []).flatMap(fid => (ix.figliDi.get(fid) || []).map(c => ix.p.get(c))).filter(x => x && x.id !== gp.id)));
+  const figli = GEN.figli(ix, id);
+  const nipoti = uniq(figli.flatMap(c => GEN.figli(ix, c.id)));
+  const unioni = GEN.coniugi(ix, id).map(c => {
+    const fg = (ix.figliDi.get(c.fam) || []).map(x => ix.p.get(x)).filter(Boolean);
+    return `<div class="alb-riga" style="align-items:flex-start"><small style="min-width:92px">Coniuge:</small><span>${c.altro ? nm(c.altro) : "<small>(non indicato)</small>"}${fg.length ? ` <small>— figli insieme:</small> ${fg.map(nm).join(" · ")}` : ""}</span></div>`;
+  }).join("");
+
+  const eventi = [...(ix.ev.get(id) || [])].sort((a, b) => ALB_ORD_EV.indexOf(a.tipo) - ALB_ORD_EV.indexOf(b.tipo));
+  const righeEv = eventi.map(e => `<div class="alb-riga"><b style="min-width:92px">${esc(e.tipo === "altro" && e.titolo ? e.titolo : GEN.TIPI[e.tipo] || e.tipo)}</b>
+    <span>${esc([e.data_testo, GEN.luogoNome(ix, e)].filter(Boolean).join(" · ") || "—")}${e.tipo === "altro" || !e.titolo ? "" : " <small>" + esc(e.titolo) + "</small>"}${e.note ? ` <small>(${esc(e.note)})</small>` : ""}</span></div>`).join("");
+  const fonti = ALB.fonti.filter(f => f.persona_id === id), docs = ALB.documenti.filter(f => f.persona_id === id);
+  const eta = albEta(ix, id), sesso = { M: "Maschio", F: "Femmina", U: "" }[p.sesso];
+  const haFam = genitori.length || fratelli.length || unioni || figli.length || nonni.length || nipoti.length || zii.length;
+
+  const m = albModale("alb-scheda-modal", esc(GEN.nome(p)), `
+    <div style="color:#8fb8cc;margin:-10px 0 10px">${esc([GEN.vita(ix, id), eta, sesso].filter(Boolean).join(" · "))}</div>
+    ${righeEv ? `<div class="alb-sez" style="margin-top:6px">Vita</div>${righeEv}` : ""}
+    <div class="alb-sez">Famiglia</div>
+    ${lista("Genitori", genitori)}${lista("Fratelli/sorelle", fratelli)}${unioni}${lista("Figli", figli)}
+    ${lista("Nonni", nonni)}${lista("Zii", zii)}${lista("Nipoti", nipoti)}
+    ${haFam ? "" : `<div style="color:#8fb8cc">Nessun legame registrato.</div>`}
+    ${p.note ? `<div class="alb-sez">Note</div><div style="white-space:pre-wrap">${esc(p.note)}</div>` : ""}
+    ${fonti.length ? `<div class="alb-sez">Fonti</div>${fonti.map(f => `<div class="alb-riga"><b>${esc(f.titolo)}</b> <small>${esc([f.tipo, f.archivio].filter(Boolean).join(" · "))}</small>${f.url ? ` <a class="alb-link" href="${esc(f.url)}" target="_blank" rel="noopener">link</a>` : ""}</div>`).join("")}` : ""}
+    ${docs.length ? `<div class="alb-sez">Documenti</div>${docs.map(x => `<div class="alb-riga"><span class="alb-link" data-az="doc-dl" data-id="${x.id}">${esc(x.nome)}</span></div>`).join("")}` : ""}
+    <div class="modal-actions" style="margin-top:18px">
+      <button class="btn small ghost" data-az="centra">Centra nell'albero</button>
+      <button class="btn small" data-az="modifica">Modifica</button>
+    </div>`, 640);
+
+  m.onclick = e => {
+    const t = e.target.closest("[data-az]"); if (!t) return;
+    const az = t.dataset.az;
+    if (az === "scheda") albApriScheda(t.dataset.id);
+    else if (az === "doc-dl") albApriDoc(t.dataset.id);
+    else if (az === "modifica") { m.remove(); albApriPersona(id); }
+    else if (az === "centra") {
+      ALB.root = id; try { localStorage.setItem("alb_root", id); } catch (_) {}
+      m.remove(); ALB.tab = "albero"; albRenderTab();
+    }
+  };
+}
+
 async function albLuogoId(nome) {
   const n = nome.trim().toLowerCase();
   let l = ALB.d.luoghi.find(x => x.nome.toLowerCase() === n);
@@ -464,7 +525,7 @@ async function albSalvaPersona(id) {
     for (const eid of esistenti.keys()) if (!tenuti.has(eid)) { const { error } = await sb.from("gen_eventi").delete().eq("id", eid); if (error) throw error; }
     if (!ALB.root) ALB.root = id;
     await albRicarica();
-    if (nuova) albApriPersona(id); else m.remove();
+    m.remove(); if (nuova) albApriPersona(id); else albApriScheda(id);
   } catch (e) { albErr(e); }
 }
 
