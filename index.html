@@ -339,6 +339,7 @@
   <div class="nav-item" data-view="accessi" data-text="Credenziali">Credenziali</div>
   <div class="nav-item" data-view="contatti" data-text="Contatti">Contatti</div>
   <div class="nav-item" data-view="autopapa" data-text="Piano Rientro Jeep Compass">Piano Rientro Jeep Compass</div>
+  <div class="nav-item" data-view="albero" data-text="Albero genealogico">Albero genealogico</div>
 </div>
 
 <!-- ===== APP ===== -->
@@ -543,6 +544,11 @@
     </div>
   </div>
 
+  <!-- ALBERO GENEALOGICO (modulo: albero-core.js + albero.js) -->
+  <div id="view-albero" class="hidden">
+    <div class="panel" id="albero-panel"></div>
+  </div>
+
   <!-- PIANO RIENTRO JEEP COMPASS -->
   <div id="view-autopapa" class="hidden">
     <div class="section-title">◈ Dashboard</div>
@@ -653,6 +659,8 @@
 
 <script src="config.js"></script>
 <script src="app.js"></script>
+<script src="albero-core.js"></script>
+<script src="albero.js"></script>
 <div id="login-flash"></div>
 <div id="login-iris"></div>
 <div id="transition-label">Accesso consentito</div>

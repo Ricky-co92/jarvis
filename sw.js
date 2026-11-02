@@ -1,5 +1,5 @@
-const CACHE_NAME = "jarvis-cache-v1";
-const CORE_ASSETS = ["./", "./index.html", "./app.js", "./config.js", "./manifest.json"];
+const CACHE_NAME = "jarvis-cache-v2";
+const CORE_ASSETS = ["./", "./index.html", "./app.js", "./config.js", "./albero-core.js", "./albero.js", "./manifest.json"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

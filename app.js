@@ -813,10 +813,11 @@ function switchView(view){
     el.classList.toggle("active", el.dataset.view === view);
   });
   document.getElementById("view-home").classList.toggle("hidden", view!=="home");
-  ["contratti","abbonamenti","veicoli","documenti","accessi","contatti","autopapa"].forEach(v=>{
+  ["contratti","abbonamenti","veicoli","documenti","accessi","contatti","autopapa","albero"].forEach(v=>{
     document.getElementById("view-"+v).classList.toggle("hidden", view!==v);
   });
   if(SECTIONS[view]) renderTable(view);
+  if(view==="albero" && typeof albInit==="function") albInit();
 }
 
 // ---------- CAMPI (generico per sezione) ----------

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Albero genealogico</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#050d12;color:#c8f2ff;font-family:'Rajdhani','Segoe UI',sans-serif;display:flex;flex-direction:column;height:100vh;height:100dvh}
+  header{padding:12px 16px;border-bottom:1px solid rgba(42,184,217,.25);display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  h1{margin:0;font-size:1.15rem;color:#4fc8e8;text-transform:uppercase;letter-spacing:.4px;flex:1 1 220px}
+  input,button{background:rgba(42,184,217,.07);border:1px solid rgba(42,184,217,.4);border-radius:3px;color:#c8f2ff;padding:8px 10px;font:inherit}
+  button{cursor:pointer;font-weight:600}
+  button:hover{background:rgba(42,184,217,.18)}
+  #cerca{flex:1 1 220px;min-width:0}
+  #vista{flex:1;position:relative;overflow:hidden;cursor:grab;user-select:none;min-height:0}
+  #scheda{padding:10px 16px;border-top:1px solid rgba(42,184,217,.25);font-size:.98rem;line-height:1.35}
+  #scheda small{color:#8fb8cc}
+  #msg{padding:40px 16px;text-align:center;color:#8fb8cc}
+  .nota{color:#6f93a3;font-size:.78rem;padding:0 16px 8px}
+</style>
+</head>
+<body>
+<header>
+  <h1>◈ Albero genealogico</h1>
+  <input id="cerca" list="dl" placeholder="Cerca una persona…" disabled>
+  <datalist id="dl"></datalist>
+  <button id="zp" title="Ingrandisci">＋</button><button id="zm" title="Riduci">－</button><button id="zr">Centra</button>
+</header>
+<div id="msg">Caricamento…</div>
+<div id="vista" hidden></div>
+<div id="scheda" hidden></div>
+<div class="nota" id="nota" hidden>Trascina per spostare · rotella o pulsanti per lo zoom · tocca una persona per metterla al centro. Le persone viventi sono oscurate.</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="albero-core.js"></script>
+<script>
+(async () => {
+  const $ = id => document.getElementById(id);
+  const token = location.hash.replace(/^#/, "").trim();
+  const msg = t => { $("msg").hidden = false; $("msg").textContent = t; };
+  if (!token) return msg("Link non valido.");
+
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } });
+  const { data, error } = await sb.rpc("gen_albero_pubblico", { p_token: token });
+  if (error) return msg("Impossibile caricare l'albero.");
+  if (!data || !data.persone || !data.persone.length) return msg("Link non valido o disattivato.");
+
+  const ix = GEN.indice(data);
+  const ordine = (a, b) => (a.cognome || "").localeCompare(b.cognome || "", "it") || (a.nome || "").localeCompare(b.nome || "", "it");
+  const visibili = [...data.persone].filter(p => !p.vivente).sort(ordine);
+  // radice: prima persona non vivente con più antenati noti, altrimenti la prima
+  const lunghezza = id => { let n = 0, g = GEN.genitori(ix, id); const s = [g.padre, g.madre].filter(Boolean); s.forEach(x => n += 1 + lunghezza(x.id)); return n; };
+  const radice = [...data.persone].sort((a, b) => lunghezza(b.id) - lunghezza(a.id))[0];
+
+  const etichette = new Map(), conta = {};
+  data.persone.forEach(p => {
+    if (p.vivente) return;
+    const v = GEN.vita(ix, p.id), e = GEN.nome(p) + (v ? " (" + v + ")" : "");
+    conta[e] = (conta[e] || 0) + 1;
+    etichette.set(conta[e] > 1 ? e + " · n." + conta[e] : e, p.id);
+  });
+  $("dl").innerHTML = [...etichette.keys()].map(k => `<option value="${GEN.esc(k)}">`).join("");
+  $("cerca").disabled = false;
+
+  $("msg").hidden = true; $("vista").hidden = false; $("scheda").hidden = false; $("nota").hidden = false;
+  let root = radice.id;
+
+  const v = GEN.vista($("vista"), ix, { onSeleziona: id => { root = id; aggiorna(); } });
+  function aggiorna() {
+    v.imposta(root, ix);
+    const p = ix.p.get(root), g = GEN.genitori(ix, root);
+    const nasc = GEN.evento(ix, root, "nascita"), mor = GEN.evento(ix, root, "morte");
+    const cons = GEN.coniugi(ix, root).map(c => c.altro).filter(Boolean), fg = GEN.figli(ix, root);
+    const r = (t, x) => x ? `<div><small>${t}:</small> ${GEN.esc(x)}</div>` : "";
+    $("scheda").innerHTML = `<b>${GEN.esc(GEN.nome(p))}</b> <small>${GEN.esc(p.vivente ? "" : GEN.vita(ix, root))}</small>` +
+      r("Nato", [nasc && nasc.data_testo, GEN.luogoNome(ix, nasc)].filter(Boolean).join(" · ")) +
+      r("Morto", [mor && mor.data_testo, GEN.luogoNome(ix, mor)].filter(Boolean).join(" · ")) +
+      r("Genitori", [g.padre, g.madre].filter(Boolean).map(GEN.nome).join(" e ")) +
+      r("Coniugi", cons.map(GEN.nome).join(", ")) + r("Figli", fg.map(GEN.nome).join(", "));
+  }
+  $("cerca").onchange = e => { const id = etichette.get(e.target.value); if (id) { root = id; e.target.value = ""; aggiorna(); } };
+  $("zp").onclick = () => v.zoom(1.25); $("zm").onclick = () => v.zoom(0.8); $("zr").onclick = () => v.adatta();
+  window.addEventListener("resize", () => v.adatta());
+  aggiorna();
+})();
+</script>
+</body>
+</html>
