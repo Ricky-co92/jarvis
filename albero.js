@@ -175,7 +175,7 @@ function albTabAlbero() {
       <input class="alb-in" id="alb-cerca" list="alb-dl" placeholder="Cerca e vai a una persona…" style="flex:1;min-width:200px">
       <datalist id="alb-dl">${[...etichette.keys()].map(k => `<option value="${esc(k)}">`).join("")}</datalist>
       <button class="btn small ghost" id="alb-zm-p">＋</button><button class="btn small ghost" id="alb-zm-m">－</button>
-      <button class="btn small ghost" id="alb-zm-r">Centra</button>
+      <button class="btn small ghost" id="alb-zm-r">Centra</button><button class="btn small ghost" id="alb-zm-t">Tutto l'albero</button>
       <label class="alb-chk"><input type="checkbox" id="alb-chk-fr"${ALB.opzAlbero.fratelli ? " checked" : ""}> Fratelli</label>
       <label class="alb-chk"><input type="checkbox" id="alb-chk-foto"${ALB.opzAlbero.foto ? " checked" : ""}> Foto</label>
       <label style="color:#8fb8cc;font-size:.85rem">Antenati
@@ -195,6 +195,7 @@ function albTabAlbero() {
   $a("alb-zm-p").onclick = () => ALB.vista.zoom(1.25);
   $a("alb-zm-m").onclick = () => ALB.vista.zoom(0.8);
   $a("alb-zm-r").onclick = () => ALB.vista.adatta();
+  $a("alb-zm-t").onclick = () => ALB.vista.adattaTutto();
   $a("alb-gavi").onchange = e => { ALB.vista.st.gAvi = +e.target.value; albAggiornaAlbero(); };
   $a("alb-gdisc").onchange = e => { ALB.vista.st.gDisc = +e.target.value; albAggiornaAlbero(); };
   albAggiornaAlbero();

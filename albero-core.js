@@ -1,7 +1,7 @@
 // albero-core.js — Albero genealogico: modello dati, albero SVG, controlli, export GEDCOM.
 // Condiviso da app.js (area privata) e da albero-pubblico.html. Nessuna dipendenza da Supabase.
 const GEN = (() => {
-  const L = { W: 210, H: 86, GX: 22, RIGA: 150 };
+  const L = { W: 200, H: 72, GX: 20, RIGA: 120 };
   const MESI_IT = { gen: 1, feb: 2, mar: 3, apr: 4, mag: 5, giu: 6, lug: 7, ago: 8, set: 9, ott: 10, nov: 11, dic: 12 };
   const MESI_EN = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
   const TIPI = { nascita: "Nascita", morte: "Morte", matrimonio: "Matrimonio", separazione: "Separazione", divorzio: "Divorzio", residenza: "Residenza", ordinazione: "Ordinazione", altro: "Altro" };
@@ -153,27 +153,28 @@ const GEN = (() => {
     const box = (p, x, y, ev) => {
       const c = COL[p.sesso] || COL.U, sel = ev === "root", url = fotoDi(p.id);
       lo = Math.min(lo, x); hi = Math.max(hi, x + W);
-      const tx = url ? 74 : 16, maxc = Math.floor((W - tx - 8) / 7.4);
+      const tx = url ? 64 : 16, disp = W - tx - 8, maxc = Math.floor(disp / 7.6);
+      const fz = (t, base) => Math.max(14, Math.min(base, Math.floor(disp / (Math.max(t.length, 1) * 0.58))));
       const cut = (t, m) => t.length > m ? t.slice(0, m - 1) + "…" : t;
       const nm = p.nome && p.nome !== "?" ? p.nome : "", cg = p.cognome || "";
       const riga1 = cut(nm || cg || "?", maxc), riga2 = nm && cg ? cut(cg.toUpperCase(), maxc) : "";
       const v = p.vivente ? "" : vita(ix, p.id);
-      const nasc = p.vivente ? null : evento(ix, p.id, "nascita"), citta = nasc ? (luogoNome(ix, nasc) || "").split(",")[0].trim() : "";
       let img = "";
       if (url) {
         const cid = "fc" + (nFoto++);
-        defs.push(`<clipPath id="${cid}"><circle cx="40" cy="${H / 2}" r="25"/></clipPath>`);
-        img = `<circle cx="40" cy="${H / 2}" r="27" fill="#07161d" stroke="${c.s}" stroke-width="1.5"/><image href="${esc(url)}" x="15" y="${H / 2 - 25}" width="50" height="50" preserveAspectRatio="xMidYMid slice" clip-path="url(#${cid})"/>`;
+        defs.push(`<clipPath id="${cid}"><circle cx="36" cy="${H / 2}" r="23"/></clipPath>`);
+        img = `<circle cx="36" cy="${H / 2}" r="25" fill="#07161d" stroke="${c.s}" stroke-width="1.5"/><image href="${esc(url)}" x="13" y="${H / 2 - 23}" width="46" height="46" preserveAspectRatio="xMidYMid slice" clip-path="url(#${cid})"/>`;
       }
       const F = 'font-family="Rajdhani,Segoe UI,sans-serif"';
+      // tre righe che riempiono il riquadro (o due se manca il cognome)
+      const y1 = riga2 ? 24 : 31, y2 = 45, y3 = riga2 ? 64 : 58;
       els.push(`<g class="gn" data-id="${p.id}" transform="translate(${x},${y})" style="cursor:pointer">` +
-        (sel ? `<rect x="-4" y="-4" width="${W + 8}" height="${H + 8}" rx="9" fill="none" stroke="${c.s}" stroke-opacity=".45" stroke-width="2"/>` : "") +
-        `<rect width="${W}" height="${H}" rx="6" fill="#0a1f29" stroke="${c.s}" stroke-width="${sel ? 2.6 : 1.4}"/>` +
-        `<rect width="${W}" height="${H}" rx="6" fill="${c.f}"/><rect width="6" height="${H}" rx="3" fill="${c.s}"/>${img}` +
-        `<text x="${tx}" y="${riga2 ? 24 : 30}" ${F} font-size="16" font-weight="700" fill="#e8fbff">${esc(riga1)}</text>` +
-        (riga2 ? `<text x="${tx}" y="42" ${F} font-size="14" font-weight="700" fill="${c.s}" letter-spacing=".4">${esc(riga2)}</text>` : "") +
-        `<text x="${tx}" y="${riga2 ? 60 : 52}" ${F} font-size="14" fill="#b8dbe8">${esc(v)}</text>` +
-        (citta ? `<text x="${tx}" y="${riga2 ? 76 : 68}" ${F} font-size="12" fill="#7fa6b8">${esc(cut(citta, maxc + 2))}</text>` : "") + `</g>`);
+        (sel ? `<rect x="-4" y="-4" width="${W + 8}" height="${H + 8}" rx="9" fill="none" stroke="${c.s}" stroke-opacity=".5" stroke-width="2.5"/>` : "") +
+        `<rect width="${W}" height="${H}" rx="6" fill="#0a1f29" stroke="${c.s}" stroke-width="${sel ? 2.8 : 1.6}"/>` +
+        `<rect width="${W}" height="${H}" rx="6" fill="${c.f}"/><rect width="7" height="${H}" rx="3" fill="${c.s}"/>${img}` +
+        `<text x="${tx}" y="${y1}" ${F} font-size="${fz(riga1, 21)}" font-weight="700" fill="#ffffff">${esc(riga1)}</text>` +
+        (riga2 ? `<text x="${tx}" y="${y2}" ${F} font-size="${fz(riga2, 19)}" font-weight="700" fill="${c.s}">${esc(riga2)}</text>` : "") +
+        `<text x="${tx}" y="${y3}" ${F} font-size="16" font-weight="600" fill="#cfe9f3">${esc(v)}</text></g>`);
     };
     const gomito = (x1, y1, x2, y2) => { const m = (y1 + y2) / 2; lin.push(`<path d="M${x1},${y1} V${m} H${x2} V${y2}" fill="none" stroke="#3a9cba" stroke-width="1.8"/>`); };
 
@@ -246,9 +247,15 @@ const GEN = (() => {
     const applica = () => { tela.style.transform = `translate(${st.x}px,${st.y}px) scale(${st.s})`; };
     function adatta() {
       const cw = cont.clientWidth || 800, ch = cont.clientHeight || 500;
-      st.s = Math.max(0.55, Math.min(1, cw / st.w));
+      st.s = Math.max(0.8, Math.min(1, cw / st.w));
       st.x = cw / 2 - st.cx * st.s;
       st.y = ch / 2 - st.cy * st.s;
+      applica();
+    }
+    function adattaTutto() {
+      const cw = cont.clientWidth || 800, ch = cont.clientHeight || 500;
+      st.s = Math.max(0.03, Math.min(1, cw / st.w, ch / st.h));
+      st.x = (cw - st.w * st.s) / 2; st.y = (ch - st.h * st.s) / 2;
       applica();
     }
     function imposta(rootId, nuovoIx) {
@@ -261,7 +268,7 @@ const GEN = (() => {
     }
     function zoom(f, px, py) {
       px = px == null ? cont.clientWidth / 2 : px; py = py == null ? cont.clientHeight / 2 : py;
-      const ns = Math.min(2.5, Math.max(0.15, st.s * f)), k = ns / st.s;
+      const ns = Math.min(2.5, Math.max(0.03, st.s * f)), k = ns / st.s;
       st.x = px - (px - st.x) * k; st.y = py - (py - st.y) * k; st.s = ns; applica();
     }
     let drag = null;
@@ -286,7 +293,7 @@ const GEN = (() => {
       const r = cont.getBoundingClientRect();
       zoom(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX - r.left, e.clientY - r.top);
     }, { passive: false });
-    return { imposta, zoom, adatta, st, svg: () => tela.querySelector("svg") };
+    return { imposta, zoom, adatta, adattaTutto, st, svg: () => tela.querySelector("svg") };
   }
 
   // ---------- STATO IN VITA (stessa regola del link pubblico) ----------

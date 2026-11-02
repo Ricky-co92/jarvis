@@ -38,7 +38,7 @@
   <h1>◈ Albero genealogico</h1>
   <input id="cerca" list="dl" placeholder="Cerca una persona…" disabled>
   <datalist id="dl"></datalist>
-  <button id="zp" title="Ingrandisci">＋</button><button id="zm" title="Riduci">－</button><button id="zr">Centra</button>
+  <button id="zp" title="Ingrandisci">＋</button><button id="zm" title="Riduci">－</button><button id="zr">Centra</button><button id="zt">Tutto l'albero</button>
 </header>
 <div id="msg">Caricamento…</div>
 <div id="vista" hidden></div>
@@ -112,7 +112,7 @@
       r("Coniugi", cons.map(GEN.nome).join(", ")) + r("Figli", fg.map(GEN.nome).join(", "));
   }
   $("cerca").onchange = e => { const id = etichette.get(e.target.value); if (id) { root = id; e.target.value = ""; aggiorna(); } };
-  $("zp").onclick = () => v.zoom(1.25); $("zm").onclick = () => v.zoom(0.8); $("zr").onclick = () => v.adatta();
+  $("zp").onclick = () => v.zoom(1.25); $("zm").onclick = () => v.zoom(0.8); $("zr").onclick = () => v.adatta(); $("zt").onclick = () => v.adattaTutto();
   window.addEventListener("resize", () => v.adatta());
   aggiorna();
 })();
